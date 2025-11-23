@@ -36,12 +36,14 @@ export function AppSidebar() {
   return (
     <Sidebar>
       <SidebarHeader className="p-4">
-        <div className="flex items-center gap-2">
-          <div className="h-8 w-8 rounded-md bg-primary flex items-center justify-center">
-            <span className="text-primary-foreground font-bold text-lg">R</span>
-          </div>
+        <div className="flex items-center gap-3">
+          <img 
+            src="/attached_assets/Gemini_Generated_Image_u44rp3u44rp3u44r (1)_1763884957408.png" 
+            alt="DriftSignal Logo" 
+            className="h-10 w-10"
+          />
           <div>
-            <h1 className="font-semibold text-lg">ReviewHub</h1>
+            <h1 className="font-semibold text-lg">DriftSignal</h1>
             <p className="text-xs text-muted-foreground">Review Manager</p>
           </div>
         </div>

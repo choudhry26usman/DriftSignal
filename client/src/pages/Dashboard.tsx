@@ -108,6 +108,9 @@ export default function Dashboard() {
   const [selectedReview, setSelectedReview] = useState<typeof mockReviews[0] | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [sentimentFilter, setSentimentFilter] = useState("all");
+  const [severityFilter, setSeverityFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [dateFilter, setDateFilter] = useState("all");
   const { toast } = useToast();
 
   const { data: emailData, refetch: refetchEmails, isFetching: isFetchingEmails, error: emailError } = useQuery<EmailListResponse>({
@@ -139,7 +142,21 @@ export default function Dashboard() {
     const matchesSearch = review.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          review.content.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesSentiment = sentimentFilter === "all" || review.sentiment === sentimentFilter;
-    return matchesSearch && matchesSentiment;
+    const matchesSeverity = severityFilter === "all" || review.severity === severityFilter;
+    const matchesStatus = statusFilter === "all" || review.status === statusFilter;
+    
+    let matchesDate = true;
+    if (dateFilter !== "all") {
+      const now = new Date();
+      const reviewDate = new Date(review.createdAt);
+      const daysDiff = Math.floor((now.getTime() - reviewDate.getTime()) / (1000 * 60 * 60 * 24));
+      
+      if (dateFilter === "7days") matchesDate = daysDiff <= 7;
+      else if (dateFilter === "30days") matchesDate = daysDiff <= 30;
+      else if (dateFilter === "90days") matchesDate = daysDiff <= 90;
+    }
+    
+    return matchesSearch && matchesSentiment && matchesSeverity && matchesStatus && matchesDate;
   });
 
   return (
@@ -272,28 +289,70 @@ export default function Dashboard() {
         </Card>
       )}
 
-      <div className="flex gap-4 flex-wrap">
-        <div className="relative flex-1 min-w-[300px]">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search reviews..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
-            data-testid="input-search"
-          />
+      <div className="space-y-4">
+        <div className="flex gap-4 flex-wrap">
+          <div className="relative flex-1 min-w-[300px]">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search reviews..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
+              data-testid="input-search"
+            />
+          </div>
         </div>
-        <Select value={sentimentFilter} onValueChange={setSentimentFilter}>
-          <SelectTrigger className="w-[180px]" data-testid="select-sentiment">
-            <SelectValue placeholder="All Sentiments" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Sentiments</SelectItem>
-            <SelectItem value="positive">Positive</SelectItem>
-            <SelectItem value="neutral">Neutral</SelectItem>
-            <SelectItem value="negative">Negative</SelectItem>
-          </SelectContent>
-        </Select>
+        
+        <div className="flex gap-3 flex-wrap">
+          <Select value={sentimentFilter} onValueChange={setSentimentFilter}>
+            <SelectTrigger className="w-[180px]" data-testid="select-sentiment">
+              <SelectValue placeholder="All Sentiments" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Sentiments</SelectItem>
+              <SelectItem value="positive">Positive</SelectItem>
+              <SelectItem value="neutral">Neutral</SelectItem>
+              <SelectItem value="negative">Negative</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select value={severityFilter} onValueChange={setSeverityFilter}>
+            <SelectTrigger className="w-[180px]" data-testid="select-severity">
+              <SelectValue placeholder="All Severity" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Severity</SelectItem>
+              <SelectItem value="low">Low</SelectItem>
+              <SelectItem value="medium">Medium</SelectItem>
+              <SelectItem value="high">High</SelectItem>
+              <SelectItem value="critical">Critical</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-[180px]" data-testid="select-status">
+              <SelectValue placeholder="All Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="open">Open</SelectItem>
+              <SelectItem value="in_progress">In Progress</SelectItem>
+              <SelectItem value="resolved">Resolved</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select value={dateFilter} onValueChange={setDateFilter}>
+            <SelectTrigger className="w-[180px]" data-testid="select-date">
+              <SelectValue placeholder="All Time" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Time</SelectItem>
+              <SelectItem value="7days">Last 7 Days</SelectItem>
+              <SelectItem value="30days">Last 30 Days</SelectItem>
+              <SelectItem value="90days">Last 90 Days</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

@@ -1,8 +1,8 @@
-# ReviewHub - Marketplace Review & Complaint Manager
+# DriftSignal - Marketplace Review & Complaint Manager
 
 ## Overview
 
-ReviewHub is a SaaS demo application for centralized management of customer reviews and complaints across multiple marketplace platforms (Amazon, eBay, Shopify, PayPal, Alibaba, and Website). The application provides AI-powered analysis, sentiment tracking, and workflow management for customer feedback. Built as a premium, enterprise-grade interface with glass-morphic aesthetics inspired by Linear, Notion, and Asana.
+DriftSignal is a SaaS platform for centralized management of customer reviews and complaints across multiple marketplace platforms (Amazon, eBay, Shopify, PayPal, Alibaba, and Website). The application provides AI-powered analysis, sentiment tracking, and workflow management for customer feedback. Built as a premium, enterprise-grade interface with glass-morphic aesthetics inspired by Linear, Notion, and Asana.
 
 **Core Capabilities:**
 - Unified dashboard for multi-marketplace review aggregation

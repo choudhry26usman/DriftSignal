@@ -19,7 +19,7 @@ export default function Login() {
       console.log("Login attempt:", username);
       toast({
         title: "Login Successful",
-        description: "Welcome to ReviewHub!",
+        description: "Welcome to DriftSignal!",
       });
       setLocation("/");
     } else {
@@ -35,10 +35,14 @@ export default function Login() {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1 text-center">
-          <div className="mx-auto h-12 w-12 rounded-md bg-primary flex items-center justify-center mb-4">
-            <span className="text-primary-foreground font-bold text-2xl">R</span>
+          <div className="mx-auto mb-4">
+            <img 
+              src="/attached_assets/Gemini_Generated_Image_u44rp3u44rp3u44r (1)_1763884957408.png" 
+              alt="DriftSignal Logo" 
+              className="h-16 w-16 mx-auto"
+            />
           </div>
-          <CardTitle className="text-2xl">ReviewHub</CardTitle>
+          <CardTitle className="text-2xl">DriftSignal</CardTitle>
           <CardDescription>
             Sign in to manage your marketplace reviews
           </CardDescription>
