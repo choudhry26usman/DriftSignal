@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { StatCard } from "@/components/StatCard";
@@ -8,6 +8,7 @@ import { MessageSquare, TrendingUp, Clock, CheckCircle, Search, Upload, Download
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import { useLocation, useSearch } from "wouter";
 import type { EmailListResponse, Email, EmailThread } from "@shared/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -106,6 +107,7 @@ const mockReviews = [
 ];
 
 export default function Dashboard() {
+  const searchString = useSearch();
   const [selectedReview, setSelectedReview] = useState<typeof mockReviews[0] | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [sentimentFilter, setSentimentFilter] = useState("all");
@@ -114,6 +116,11 @@ export default function Dashboard() {
   const [dateFilter, setDateFilter] = useState("all");
   const [expandedThreads, setExpandedThreads] = useState<Set<string>>(new Set());
   const { toast } = useToast();
+  
+  const marketplaceFilter = useMemo(() => {
+    const searchParams = new URLSearchParams(searchString);
+    return searchParams.get('marketplace') || "all";
+  }, [searchString]);
 
   const toggleThread = (threadId: string) => {
     setExpandedThreads(prev => {
@@ -152,26 +159,29 @@ export default function Dashboard() {
     }
   };
 
-  const filteredReviews = mockReviews.filter((review) => {
-    const matchesSearch = review.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         review.content.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesSentiment = sentimentFilter === "all" || review.sentiment === sentimentFilter;
-    const matchesSeverity = severityFilter === "all" || review.severity === severityFilter;
-    const matchesStatus = statusFilter === "all" || review.status === statusFilter;
-    
-    let matchesDate = true;
-    if (dateFilter !== "all") {
-      const now = new Date();
-      const reviewDate = new Date(review.createdAt);
-      const daysDiff = Math.floor((now.getTime() - reviewDate.getTime()) / (1000 * 60 * 60 * 24));
+  const filteredReviews = useMemo(() => {
+    return mockReviews.filter((review) => {
+      const matchesSearch = review.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                           review.content.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesSentiment = sentimentFilter === "all" || review.sentiment === sentimentFilter;
+      const matchesSeverity = severityFilter === "all" || review.severity === severityFilter;
+      const matchesStatus = statusFilter === "all" || review.status === statusFilter;
+      const matchesMarketplace = marketplaceFilter === "all" || review.marketplace === marketplaceFilter;
       
-      if (dateFilter === "7days") matchesDate = daysDiff <= 7;
-      else if (dateFilter === "30days") matchesDate = daysDiff <= 30;
-      else if (dateFilter === "90days") matchesDate = daysDiff <= 90;
-    }
-    
-    return matchesSearch && matchesSentiment && matchesSeverity && matchesStatus && matchesDate;
-  });
+      let matchesDate = true;
+      if (dateFilter !== "all") {
+        const now = new Date();
+        const reviewDate = new Date(review.createdAt);
+        const daysDiff = Math.floor((now.getTime() - reviewDate.getTime()) / (1000 * 60 * 60 * 24));
+        
+        if (dateFilter === "7days") matchesDate = daysDiff <= 7;
+        else if (dateFilter === "30days") matchesDate = daysDiff <= 30;
+        else if (dateFilter === "90days") matchesDate = daysDiff <= 90;
+      }
+      
+      return matchesSearch && matchesSentiment && matchesSeverity && matchesStatus && matchesDate && matchesMarketplace;
+    });
+  }, [marketplaceFilter, searchQuery, sentimentFilter, severityFilter, statusFilter, dateFilter]);
 
   return (
     <div className="p-6 space-y-6">
