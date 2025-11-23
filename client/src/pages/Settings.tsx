@@ -41,7 +41,8 @@ export default function Settings() {
         description: `Imported ${data.imported} reviews from Amazon. Check your Dashboard!`,
       });
       setAsin("");
-      queryClient.invalidateQueries({ queryKey: ["/api/reviews"] });
+      // Invalidate the imported reviews cache so Dashboard refreshes
+      queryClient.invalidateQueries({ queryKey: ["/api/reviews/imported"] });
     },
     onError: (error: any) => {
       toast({
