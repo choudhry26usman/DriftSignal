@@ -4,8 +4,10 @@ import { Button } from "@/components/ui/button";
 import { StatCard } from "@/components/StatCard";
 import { ReviewCard } from "@/components/ReviewCard";
 import { ReviewDetailModal } from "@/components/ReviewDetailModal";
-import { MessageSquare, TrendingUp, Clock, CheckCircle, Search, Upload, Download } from "lucide-react";
+import { MessageSquare, TrendingUp, Clock, CheckCircle, Search, Upload, Download, Mail, RefreshCw } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useQuery } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
 
 const mockReviews = [
   {
@@ -14,6 +16,7 @@ const mockReviews = [
     title: "Product arrived damaged, very disappointed",
     content: "I ordered this product with high expectations, but it arrived with visible damage to the packaging and the item itself. The customer service was slow to respond. I expected better quality control from this seller.",
     customerName: "John Smith",
+    customerEmail: "john.smith@example.com",
     rating: 2,
     sentiment: "negative" as const,
     category: "defect",
@@ -28,6 +31,7 @@ const mockReviews = [
     title: "Great product, fast shipping!",
     content: "Exactly as described, arrived two days early. Excellent packaging and the quality exceeded my expectations. Will definitely order from this seller again!",
     customerName: "Sarah Johnson",
+    customerEmail: "sarah.j@example.com",
     rating: 5,
     sentiment: "positive" as const,
     category: "shipping",
@@ -42,6 +46,7 @@ const mockReviews = [
     title: "Product is okay but customer service needs improvement",
     content: "The product itself is decent and works as advertised. However, I had a question before purchasing and it took 3 days to get a response. The quality is good but the support experience could be better.",
     customerName: "Mike Davis",
+    customerEmail: "mike.davis@example.com",
     rating: 3,
     sentiment: "neutral" as const,
     category: "service",
@@ -56,6 +61,7 @@ const mockReviews = [
     title: "Wrong item sent, requesting refund",
     content: "I ordered a blue medium shirt but received a red small instead. This is completely wrong and I need this resolved immediately. I've been trying to contact support but haven't heard back.",
     customerName: "Emily Chen",
+    customerEmail: "emily.chen@example.com",
     sentiment: "negative" as const,
     category: "shipping",
     severity: "critical" as const,
@@ -69,6 +75,7 @@ const mockReviews = [
     title: "Bulk order exceeded expectations",
     content: "Ordered 500 units for our retail business. Quality is consistent across all items, packaging was professional, and shipping was faster than quoted. Price point is excellent for the quality received.",
     customerName: "Robert Williams",
+    customerEmail: "robert.w@example.com",
     rating: 5,
     sentiment: "positive" as const,
     category: "quality",
@@ -83,6 +90,7 @@ const mockReviews = [
     title: "Shipping took longer than expected",
     content: "The product is fine and as described, but it took 2 weeks to arrive when the website said 7-10 days. Would have been nice to get an update about the delay.",
     customerName: "Lisa Anderson",
+    customerEmail: "lisa.a@example.com",
     rating: 3,
     sentiment: "neutral" as const,
     category: "shipping",
@@ -97,6 +105,28 @@ export default function Dashboard() {
   const [selectedReview, setSelectedReview] = useState<typeof mockReviews[0] | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [sentimentFilter, setSentimentFilter] = useState("all");
+  const { toast } = useToast();
+
+  const { data: emails, refetch: refetchEmails, isLoading: isLoadingEmails } = useQuery({
+    queryKey: ["/api/emails"],
+    enabled: false,
+  });
+
+  const handleSyncEmails = async () => {
+    try {
+      await refetchEmails();
+      toast({
+        title: "Emails Synced",
+        description: "Successfully synced emails from AgentMail inbox.",
+      });
+    } catch (error) {
+      toast({
+        title: "Sync Failed",
+        description: "Could not sync emails. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const filteredReviews = mockReviews.filter((review) => {
     const matchesSearch = review.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -109,12 +139,21 @@ export default function Dashboard() {
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-semibold">Dashboard</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
           <p className="text-sm text-muted-foreground">
-            Overview of all marketplace reviews and complaints
+            Centralized marketplace review and complaint management
           </p>
         </div>
         <div className="flex gap-2">
+          <Button 
+            variant="outline" 
+            onClick={handleSyncEmails}
+            disabled={isLoadingEmails}
+            data-testid="button-sync-emails"
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${isLoadingEmails ? 'animate-spin' : ''}`} />
+            Sync Emails
+          </Button>
           <Button variant="outline" data-testid="button-import-reviews">
             <Upload className="h-4 w-4 mr-2" />
             Import Reviews
