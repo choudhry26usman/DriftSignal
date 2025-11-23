@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { getUncachableAgentMailClient } from "./integrations/agentmail";
 import { getUncachableOutlookClient } from "./integrations/outlook";
 import { testAxessoConnection } from "./integrations/axesso";
+import { testWalmartConnection } from "./integrations/walmart";
 import { analyzeReview, generateReply } from "./ai/service";
 import { z } from "zod";
 
@@ -574,6 +575,129 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Import Walmart reviews - fetch from Walmart and process through AI
+  app.post("/api/walmart/import-reviews", async (req, res) => {
+    try {
+      let { productUrl } = req.body;
+      
+      if (!productUrl || typeof productUrl !== 'string') {
+        return res.status(400).json({ error: "Walmart product URL is required" });
+      }
+      
+      console.log(`Importing Walmart reviews for product: ${productUrl}`);
+      
+      // Fetch reviews from Walmart via Axesso
+      const { fetchWalmartProduct } = await import("./integrations/walmart");
+      const result = await fetchWalmartProduct(productUrl);
+      
+      if (!result.reviews || result.reviews.length === 0) {
+        return res.json({ 
+          imported: 0, 
+          message: "No reviews found for this Walmart product" 
+        });
+      }
+
+      const productName = result.productName;
+      const productId = result.productId;
+      
+      console.log(`Processing ${result.reviews.length} Walmart reviews for "${productName}"...`);
+      
+      // Process each review through AI
+      const processedReviews = [];
+      for (const review of result.reviews) {
+        try {
+          const reviewText = review.text || '';
+          const userName = review.reviewerName || 'Anonymous';
+          const reviewTitle = review.title || 'Review';
+          
+          // Analyze the review
+          const analysis = await analyzeReview(
+            reviewText,
+            userName,
+            "Walmart"
+          );
+
+          // Generate AI reply
+          const aiReply = await generateReply(
+            reviewText,
+            userName,
+            "Walmart",
+            analysis.sentiment,
+            analysis.severity
+          );
+
+          const processedReview = {
+            id: `walmart-${productId}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            marketplace: "Walmart" as const,
+            title: reviewTitle,
+            content: reviewText,
+            customerName: userName,
+            customerEmail: `${userName.toLowerCase().replace(/\s+/g, '.')}@walmart.customer`,
+            rating: review.rating,
+            sentiment: analysis.sentiment,
+            category: analysis.category,
+            severity: analysis.severity,
+            status: "open",
+            createdAt: new Date(review.date),
+            aiSuggestedReply: aiReply,
+            verified: true,
+          };
+
+          processedReviews.push(processedReview);
+          console.log(`✓ Processed review from ${userName} (${analysis.sentiment}/${analysis.severity})`);
+        } catch (error) {
+          console.error(`Failed to process review:`, error);
+        }
+      }
+
+      // Store in global reviews array (in-memory for now)
+      if (!global.importedReviews) {
+        global.importedReviews = [];
+      }
+      global.importedReviews.push(...processedReviews);
+
+      // Track the product
+      if (!global.trackedProducts) {
+        global.trackedProducts = [];
+      }
+      
+      const existingProductIndex = global.trackedProducts.findIndex(
+        p => p.productId === productId && p.platform === "Walmart"
+      );
+      
+      if (existingProductIndex >= 0) {
+        global.trackedProducts[existingProductIndex] = {
+          ...global.trackedProducts[existingProductIndex],
+          reviewCount: global.trackedProducts[existingProductIndex].reviewCount + processedReviews.length,
+          lastImported: new Date(),
+        };
+      } else {
+        global.trackedProducts.push({
+          id: `product-walmart-${productId}`,
+          platform: "Walmart",
+          productId,
+          productName,
+          reviewCount: processedReviews.length,
+          lastImported: new Date(),
+        });
+      }
+
+      console.log(`✓ Successfully imported ${processedReviews.length} Walmart reviews for "${productName}"`);
+      
+      res.json({
+        imported: processedReviews.length,
+        productId,
+        productName,
+        reviews: processedReviews
+      });
+    } catch (error: any) {
+      console.error("Failed to import Walmart reviews:", error);
+      res.status(500).json({ 
+        error: error.message || "Failed to import Walmart reviews"
+      });
+    }
+  });
+
   // Check integration status
   app.get("/api/integrations/status", async (req, res) => {
     const status = {
@@ -603,6 +727,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       },
       shopify: {
         name: "Shopify",
+        connected: false,
+        details: "",
+        lastChecked: new Date().toISOString(),
+      },
+      walmart: {
+        name: "Walmart (Axesso)",
         connected: false,
         details: "",
         lastChecked: new Date().toISOString(),
@@ -665,6 +795,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       status.shopify.connected = false;
       status.shopify.details = error.message || "Not configured";
+    }
+
+    // Check Walmart
+    try {
+      const result = await testWalmartConnection();
+      status.walmart.connected = result.success;
+      status.walmart.details = result.message;
+    } catch (error: any) {
+      status.walmart.connected = false;
+      status.walmart.details = error.message || "Not configured";
     }
 
     res.json(status);
