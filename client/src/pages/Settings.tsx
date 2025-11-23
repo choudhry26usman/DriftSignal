@@ -21,12 +21,14 @@ interface ConnectionStatusResponse {
   openrouter: IntegrationStatus;
   axesso: IntegrationStatus;
   shopify: IntegrationStatus;
+  walmart: IntegrationStatus;
 }
 
 export default function Settings() {
   const { toast } = useToast();
   const [asin, setAsin] = useState("");
   const [shopifyProductId, setShopifyProductId] = useState("");
+  const [walmartProductUrl, setWalmartProductUrl] = useState("");
 
   const { data: statusData, isLoading, refetch, isFetching } = useQuery<ConnectionStatusResponse>({
     queryKey: ['/api/integrations/status'],
@@ -92,6 +94,29 @@ export default function Settings() {
     importMutation.mutate(trimmedAsin);
   };
 
+  const walmartImportMutation = useMutation({
+    mutationFn: async (productUrl: string) => {
+      const response = await apiRequest("POST", "/api/walmart/import-reviews", { productUrl });
+      return await response.json();
+    },
+    onSuccess: (data: any) => {
+      toast({
+        title: "Success!",
+        description: `Imported ${data.imported} reviews from Walmart. Check your Dashboard!`,
+      });
+      setWalmartProductUrl("");
+      queryClient.invalidateQueries({ queryKey: ["/api/reviews/imported"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/products/tracked"] });
+    },
+    onError: (error: any) => {
+      toast({
+        variant: "destructive",
+        title: "Import failed",
+        description: error.message || "Please check your Walmart product URL and AXESSO_API_KEY",
+      });
+    },
+  });
+
   const handleShopifyImport = () => {
     const trimmedId = shopifyProductId.trim();
     if (!trimmedId) {
@@ -103,6 +128,19 @@ export default function Settings() {
       return;
     }
     shopifyImportMutation.mutate(trimmedId);
+  };
+
+  const handleWalmartImport = () => {
+    const trimmedUrl = walmartProductUrl.trim();
+    if (!trimmedUrl) {
+      toast({
+        variant: "destructive",
+        title: "Product URL required",
+        description: "Please enter a Walmart product URL",
+      });
+      return;
+    }
+    walmartImportMutation.mutate(trimmedUrl);
   };
 
   const handleTestConnection = async (integration: string) => {
@@ -484,6 +522,70 @@ export default function Settings() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Walmart Integration */}
+            <Card data-testid="card-integration-walmart">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-primary/10 rounded-md">
+                      <ShoppingCart className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-base">Walmart (Axesso)</CardTitle>
+                      <CardDescription>E-commerce data extraction from Walmart</CardDescription>
+                    </div>
+                  </div>
+                  <Badge 
+                    variant={statusData?.walmart.connected ? "default" : "destructive"}
+                    data-testid="badge-walmart-status"
+                  >
+                    {statusData?.walmart.connected ? (
+                      <>
+                        <CheckCircle className="h-3 w-3 mr-1" />
+                        Connected
+                      </>
+                    ) : (
+                      <>
+                        <XCircle className="h-3 w-3 mr-1" />
+                        Disconnected
+                      </>
+                    )}
+                  </Badge>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {statusData?.walmart.details && (
+                  <p className="text-sm text-muted-foreground">
+                    {statusData.walmart.details}
+                  </p>
+                )}
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleTestConnection('walmart')}
+                    data-testid="button-test-walmart"
+                  >
+                    Test Connection
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      toast({
+                        title: "Same API Key",
+                        description: "Walmart uses the same AXESSO_API_KEY as Amazon. No additional setup needed!",
+                      });
+                    }}
+                    data-testid="link-configure-walmart"
+                  >
+                    <ExternalLink className="h-3 w-3 mr-1" />
+                    API Key Info
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         )}
       </div>
@@ -604,6 +706,67 @@ export default function Settings() {
               <p>• AI-generated replies will be created for each review</p>
               <p>• Imported reviews will appear on your Dashboard</p>
               <p>• Product ID format: gid://shopify/Product/[ID] or just the numeric ID</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Walmart Reviews Importer */}
+      <div className="space-y-4 pt-6 border-t">
+        <div>
+          <h2 className="text-lg font-semibold mb-1">Walmart Reviews Importer</h2>
+          <p className="text-sm text-muted-foreground">
+            Import Walmart product reviews and process them through AI for complaint management
+          </p>
+        </div>
+
+        <Card className="border-primary/20">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <ShoppingCart className="w-5 h-5 text-primary" />
+              <CardTitle>Import from Walmart</CardTitle>
+            </div>
+            <CardDescription>
+              Enter a Walmart product URL to fetch reviews, analyze sentiment, and add them to your dashboard
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex gap-2">
+              <Input
+                placeholder="Enter Walmart Product URL (e.g., https://www.walmart.com/ip/...)"
+                value={walmartProductUrl}
+                onChange={(e) => setWalmartProductUrl(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    handleWalmartImport();
+                  }
+                }}
+                data-testid="input-walmart-product-url"
+              />
+              <Button
+                onClick={handleWalmartImport}
+                disabled={walmartImportMutation.isPending}
+                data-testid="button-import-walmart-reviews"
+              >
+                {walmartImportMutation.isPending ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    <Download className="w-4 h-4 mr-2" />
+                    Import Reviews
+                  </>
+                )}
+              </Button>
+            </div>
+            
+            <div className="text-xs text-muted-foreground space-y-1">
+              <p>• Reviews will be analyzed for sentiment, category, and severity</p>
+              <p>• AI-generated replies will be created for each review</p>
+              <p>• Imported reviews will appear on your Dashboard</p>
+              <p>• Uses the same AXESSO_API_KEY as Amazon</p>
             </div>
           </CardContent>
         </Card>
