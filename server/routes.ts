@@ -269,7 +269,95 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Fetch Amazon reviews by ASIN
+  // Import Amazon reviews - fetch from Axesso and process through AI
+  app.post("/api/amazon/import-reviews", async (req, res) => {
+    try {
+      const { asin } = req.body;
+      
+      if (!asin || typeof asin !== 'string') {
+        return res.status(400).json({ error: "ASIN is required" });
+      }
+      
+      // Fetch reviews from Axesso
+      const { getProductReviews } = await import("./integrations/axesso");
+      const result = await getProductReviews(asin);
+      
+      if (!result.reviews || result.reviews.length === 0) {
+        return res.json({ 
+          imported: 0, 
+          message: "No reviews found for this ASIN" 
+        });
+      }
+
+      console.log(`Processing ${result.reviews.length} reviews from Amazon...`);
+      
+      // Process each review through AI
+      const processedReviews = [];
+      for (const review of result.reviews) {
+        try {
+          // Analyze the review
+          const analysis = await analyzeReview(
+            review.reviewText,
+            review.reviewerName,
+            "Amazon"
+          );
+
+          // Generate AI reply
+          const aiReply = await generateReply(
+            review.reviewText,
+            review.reviewerName,
+            "Amazon",
+            analysis.sentiment,
+            analysis.severity
+          );
+
+          const processedReview = {
+            id: `amazon-${asin}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            marketplace: "Amazon" as const,
+            title: review.reviewTitle,
+            content: review.reviewText,
+            customerName: review.reviewerName,
+            customerEmail: `${review.reviewerName.toLowerCase().replace(/\s+/g, '.')}@amazon.customer`,
+            rating: parseFloat(review.rating),
+            sentiment: analysis.sentiment,
+            category: analysis.category,
+            severity: analysis.severity,
+            status: "open",
+            createdAt: new Date(review.reviewDate),
+            aiSuggestedReply: aiReply,
+            verified: review.verified,
+            asin: asin,
+          };
+
+          processedReviews.push(processedReview);
+          console.log(`✓ Processed review from ${review.reviewerName} (${analysis.sentiment}/${analysis.severity})`);
+        } catch (error) {
+          console.error(`Failed to process review from ${review.reviewerName}:`, error);
+        }
+      }
+
+      // Store in global reviews array (in-memory for now)
+      if (!global.importedReviews) {
+        global.importedReviews = [];
+      }
+      global.importedReviews.push(...processedReviews);
+
+      console.log(`✓ Successfully imported ${processedReviews.length} reviews`);
+      
+      res.json({
+        imported: processedReviews.length,
+        asin,
+        reviews: processedReviews
+      });
+    } catch (error: any) {
+      console.error("Failed to import Amazon reviews:", error);
+      res.status(500).json({ 
+        error: error.message || "Failed to import Amazon reviews" 
+      });
+    }
+  });
+
+  // Fetch Amazon reviews by ASIN (preview only, no import)
   app.post("/api/amazon/reviews", async (req, res) => {
     try {
       const { asin } = req.body;
@@ -293,6 +381,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ 
         error: error.message || "Failed to fetch Amazon reviews" 
       });
+    }
+  });
+
+  // Get all imported reviews
+  app.get("/api/reviews/imported", async (req, res) => {
+    try {
+      const reviews = global.importedReviews || [];
+      res.json({ reviews, total: reviews.length });
+    } catch (error: any) {
+      console.error("Failed to fetch imported reviews:", error);
+      res.status(500).json({ error: "Failed to fetch imported reviews" });
     }
   });
 

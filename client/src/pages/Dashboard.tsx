@@ -141,6 +141,15 @@ export default function Dashboard() {
     enabled: false,
   });
 
+  const { data: importedReviewsData } = useQuery<{ reviews: typeof mockReviews; total: number }>({
+    queryKey: ["/api/reviews/imported"],
+  });
+
+  const allReviews = useMemo(() => {
+    const imported = importedReviewsData?.reviews || [];
+    return [...mockReviews, ...imported];
+  }, [importedReviewsData]);
+
   const handleSyncEmails = async () => {
     try {
       const result = await refetchEmails();
@@ -162,7 +171,7 @@ export default function Dashboard() {
   };
 
   const filteredReviews = useMemo(() => {
-    return mockReviews.filter((review) => {
+    return allReviews.filter((review) => {
       const matchesSearch = review.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                            review.content.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesSentiment = sentimentFilter === "all" || review.sentiment === sentimentFilter;
@@ -183,7 +192,7 @@ export default function Dashboard() {
       
       return matchesSearch && matchesSentiment && matchesSeverity && matchesStatus && matchesDate && matchesMarketplace;
     });
-  }, [marketplaceFilter, searchQuery, sentimentFilter, severityFilter, statusFilter, dateFilter]);
+  }, [allReviews, marketplaceFilter, searchQuery, sentimentFilter, severityFilter, statusFilter, dateFilter]);
 
   return (
     <div className="p-6 space-y-6">
