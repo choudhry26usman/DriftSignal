@@ -15,7 +15,7 @@ const marketplaceIcons = {
   Website: Globe,
 };
 
-export interface KanbanReview {
+export interface WorkflowReview {
   id: string;
   marketplace: keyof typeof marketplaceIcons;
   title: string;
@@ -23,18 +23,18 @@ export interface KanbanReview {
   category: string;
 }
 
-export interface KanbanColumn {
+export interface WorkflowColumn {
   id: string;
   title: string;
-  reviews: KanbanReview[];
+  reviews: WorkflowReview[];
 }
 
-interface KanbanBoardProps {
-  columns: KanbanColumn[];
+interface WorkflowBoardProps {
+  columns: WorkflowColumn[];
   onReviewMove?: (reviewId: string, sourceColumn: string, destColumn: string) => void;
 }
 
-export function KanbanBoard({ columns: initialColumns, onReviewMove }: KanbanBoardProps) {
+export function WorkflowBoard({ columns: initialColumns, onReviewMove }: WorkflowBoardProps) {
   const [columns, setColumns] = useState(initialColumns);
 
   const onDragEnd = (result: DropResult) => {
@@ -107,7 +107,7 @@ export function KanbanBoard({ columns: initialColumns, onReviewMove }: KanbanBoa
                               "cursor-grab active:cursor-grabbing",
                               snapshot.isDragging && "shadow-lg"
                             )}
-                            data-testid={`kanban-card-${review.id}`}
+                            data-testid={`workflow-card-${review.id}`}
                           >
                             <CardHeader className="pb-3">
                               <div className="flex items-center gap-2">

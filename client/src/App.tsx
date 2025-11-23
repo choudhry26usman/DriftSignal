@@ -10,7 +10,7 @@ import { AppSidebar } from "@/components/app-sidebar";
 import NotFound from "@/pages/not-found";
 import Login from "@/pages/Login";
 import Dashboard from "@/pages/Dashboard";
-import Kanban from "@/pages/Kanban";
+import WorkflowManagement from "@/pages/WorkflowManagement";
 import Analytics from "@/pages/Analytics";
 
 function Router() {
@@ -18,7 +18,7 @@ function Router() {
     <Switch>
       <Route path="/login" component={Login} />
       <Route path="/" component={Dashboard} />
-      <Route path="/kanban" component={Kanban} />
+      <Route path="/workflow" component={WorkflowManagement} />
       <Route path="/analytics" component={Analytics} />
       <Route component={NotFound} />
     </Switch>

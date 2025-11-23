@@ -1,6 +1,6 @@
-import { KanbanBoard } from '../KanbanBoard';
+import { WorkflowBoard } from '../WorkflowBoard';
 
-export default function KanbanBoardExample() {
+export default function WorkflowBoardExample() {
   const mockColumns = [
     {
       id: "open",
@@ -37,7 +37,7 @@ export default function KanbanBoardExample() {
 
   return (
     <div className="p-6">
-      <KanbanBoard 
+      <WorkflowBoard 
         columns={mockColumns} 
         onReviewMove={(id, from, to) => console.log(`Moved ${id} from ${from} to ${to}`)}
       />

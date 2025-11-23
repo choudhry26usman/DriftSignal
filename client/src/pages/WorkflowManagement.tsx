@@ -1,6 +1,6 @@
-import { KanbanBoard, KanbanColumn } from "@/components/KanbanBoard";
+import { WorkflowBoard, WorkflowColumn } from "@/components/WorkflowBoard";
 
-const mockColumns: KanbanColumn[] = [
+const mockColumns: WorkflowColumn[] = [
   {
     id: "open",
     title: "Open",
@@ -63,7 +63,7 @@ const mockColumns: KanbanColumn[] = [
   },
 ];
 
-export default function Kanban() {
+export default function WorkflowManagement() {
   const handleReviewMove = (reviewId: string, sourceColumn: string, destColumn: string) => {
     console.log(`Review ${reviewId} moved from ${sourceColumn} to ${destColumn}`);
   };
@@ -71,13 +71,13 @@ export default function Kanban() {
   return (
     <div className="p-6 space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold">Kanban Board</h1>
+        <h1 className="text-2xl font-semibold">Workflow Management</h1>
         <p className="text-sm text-muted-foreground">
-          Manage review workflow by dragging cards between columns
+          Organize and track review progress by dragging cards between workflow stages
         </p>
       </div>
 
-      <KanbanBoard columns={mockColumns} onReviewMove={handleReviewMove} />
+      <WorkflowBoard columns={mockColumns} onReviewMove={handleReviewMove} />
     </div>
   );
 }
