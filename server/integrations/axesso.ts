@@ -142,11 +142,21 @@ export async function searchProducts(keyword: string, page: number = 1): Promise
 /**
  * Get product reviews by Amazon URL or ASIN
  */
-export async function getProductReviews(amazonUrl: string, page: number = 1): Promise<{ reviews: AxessoReview[] }> {
-  return axessoRequest<{ reviews: AxessoReview[] }>('/amz/amazon-reviews', {
-    url: amazonUrl,
-    page: page.toString()
-  });
+export async function getProductReviews(asinOrUrl: string, page: number = 1): Promise<{ reviews: AxessoReview[] }> {
+  // If it's a URL, use url parameter; otherwise use asin parameter
+  const isUrl = asinOrUrl.startsWith('http');
+  const params: Record<string, string> = {
+    page: page.toString(),
+    domainCode: 'com'
+  };
+  
+  if (isUrl) {
+    params.url = asinOrUrl;
+  } else {
+    params.asin = asinOrUrl;
+  }
+  
+  return axessoRequest<{ reviews: AxessoReview[] }>('/amz/amazon-reviews', params);
 }
 
 /**

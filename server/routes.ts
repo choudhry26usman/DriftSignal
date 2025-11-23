@@ -269,6 +269,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Fetch Amazon reviews by ASIN
+  app.post("/api/amazon/reviews", async (req, res) => {
+    try {
+      const { asin } = req.body;
+      
+      if (!asin || typeof asin !== 'string') {
+        return res.status(400).json({ error: "ASIN is required" });
+      }
+      
+      // Import the function here to avoid circular dependencies
+      const { getProductReviews } = await import("./integrations/axesso");
+      
+      const result = await getProductReviews(asin);
+      
+      res.json({
+        asin,
+        reviews: result.reviews || [],
+        total: result.reviews?.length || 0
+      });
+    } catch (error: any) {
+      console.error("Failed to fetch Amazon reviews:", error);
+      res.status(500).json({ 
+        error: error.message || "Failed to fetch Amazon reviews" 
+      });
+    }
+  });
+
   // Check integration status
   app.get("/api/integrations/status", async (req, res) => {
     const status = {

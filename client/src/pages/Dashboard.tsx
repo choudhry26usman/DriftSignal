@@ -5,6 +5,7 @@ import { StatCard } from "@/components/StatCard";
 import { ReviewCard } from "@/components/ReviewCard";
 import { ReviewDetailModal } from "@/components/ReviewDetailModal";
 import { ImportReviewsModal } from "@/components/ImportReviewsModal";
+import { AmazonReviewsPanel } from "@/components/AmazonReviewsPanel";
 import { MessageSquare, TrendingUp, Clock, CheckCircle, Search, Upload, Download, Mail, RefreshCw, Loader2, Inbox, ChevronDown, ChevronRight } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useQuery } from "@tanstack/react-query";
@@ -363,6 +364,8 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       )}
+
+      <AmazonReviewsPanel />
 
       <div className="space-y-4">
         <div className="flex gap-4 flex-wrap">
