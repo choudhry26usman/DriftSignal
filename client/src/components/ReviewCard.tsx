@@ -75,7 +75,7 @@ export function ReviewCard({
               {severity}
             </Badge>
             <span className="text-xs text-muted-foreground font-mono">
-              {createdAt.toLocaleDateString()}
+              {new Date(createdAt).toLocaleDateString()}
             </span>
           </div>
         </div>
