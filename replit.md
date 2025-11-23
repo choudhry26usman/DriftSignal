@@ -18,6 +18,40 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
+### November 23, 2025 - Marketplace Filtering & Import Reviews
+
+**Marketplace Filtering:**
+- Implemented URL-based marketplace filtering using Wouter's `useSearch()` hook for reactive search param tracking
+- Sidebar marketplace buttons toggle filters (click to filter, click again to clear)
+- Dashboard reactively filters review cards based on URL query parameter (?marketplace=Amazon)
+- Active marketplace indicated with visual styling in sidebar navigation
+- Filtering logic integrated with existing sentiment, severity, status, and date filters
+- Filtering preserves shareable state through URL parameters
+
+**Import Reviews Modal:**
+- Created ImportReviewsModal component with comprehensive CSV upload functionality
+- Features include:
+  - Marketplace selector dropdown (Amazon, eBay, Shopify, PayPal, Alibaba, Website)
+  - Drag-and-drop file upload zone with visual feedback
+  - CSV template download for proper formatting guidance
+  - File validation (CSV only, max 5MB)
+  - Disabled import button until file is selected
+- Modal triggered from sidebar "Import Reviews" button
+- Follows glassmorphic design aesthetic with Shadcn UI components
+
+**Technical Implementation:**
+- Updated `client/src/components/app-sidebar.tsx` with marketplace click handlers and import modal state
+- Created `client/src/components/ImportReviewsModal.tsx` as standalone component
+- Modified `client/src/pages/Dashboard.tsx` to use `useSearch()` hook for URL param reactivity
+- Filter logic uses `useMemo` for performance with proper dependency tracking
+- Toggle behavior: navigates to `/?marketplace=X` or `/` using Wouter's `useLocation()` hook
+
+**Testing:**
+- End-to-end tested marketplace filtering with all 6 marketplaces
+- Verified toggle on/off functionality clears filters correctly
+- Tested import modal opens with all required elements
+- Confirmed URL state synchronization and reactive filtering
+
 ### November 23, 2025 - AI Integration and Email Threading
 
 **AI-Powered Reply Generation:**
