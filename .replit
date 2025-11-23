@@ -39,4 +39,4 @@ args = "npm run dev"
 waitForPort = 5000
 
 [agent]
-integrations = ["javascript_openrouter_ai_integrations:1.0.0", "javascript_mem_db:1.0.0"]
+integrations = ["javascript_openrouter_ai_integrations:1.0.0", "javascript_mem_db:1.0.0", "agentmail:1.0.0"]
