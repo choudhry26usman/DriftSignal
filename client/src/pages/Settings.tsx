@@ -31,9 +31,9 @@ export default function Settings() {
       description: `Checking ${integration} integration status`,
     });
     
-    await refetch();
+    const { data } = await refetch();
     
-    const status = statusData?.[integration as keyof ConnectionStatusResponse];
+    const status = data?.[integration as keyof ConnectionStatusResponse];
     if (status?.connected) {
       toast({
         title: "Connection successful",
