@@ -1,9 +1,12 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { useQuery } from "@tanstack/react-query";
-import { Mail, Zap, CheckCircle, XCircle, ExternalLink, RefreshCw, Loader2, ShoppingCart } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { Mail, Zap, CheckCircle, XCircle, ExternalLink, RefreshCw, Loader2, ShoppingCart, Package, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useState } from "react";
 
 interface IntegrationStatus {
   name: string;
@@ -21,10 +24,46 @@ interface ConnectionStatusResponse {
 
 export default function Settings() {
   const { toast } = useToast();
+  const [asin, setAsin] = useState("");
 
   const { data: statusData, isLoading, refetch, isFetching } = useQuery<ConnectionStatusResponse>({
     queryKey: ['/api/integrations/status'],
   });
+
+  const importMutation = useMutation({
+    mutationFn: async (asinValue: string) => {
+      const response = await apiRequest("POST", "/api/amazon/import-reviews", { asin: asinValue });
+      return await response.json();
+    },
+    onSuccess: (data: any) => {
+      toast({
+        title: "Success!",
+        description: `Imported ${data.imported} reviews from Amazon. Check your Dashboard!`,
+      });
+      setAsin("");
+      queryClient.invalidateQueries({ queryKey: ["/api/reviews"] });
+    },
+    onError: (error: any) => {
+      toast({
+        variant: "destructive",
+        title: "Import failed",
+        description: error.message || "Please check your ASIN and ensure Axesso is subscribed",
+      });
+    },
+  });
+
+  const handleImportReviews = () => {
+    const trimmedAsin = asin.trim();
+    if (!trimmedAsin) {
+      toast({
+        variant: "destructive",
+        title: "ASIN required",
+        description: "Please enter an Amazon ASIN",
+      });
+      return;
+    }
+    importMutation.mutate(trimmedAsin);
+  };
 
   const handleTestConnection = async (integration: string) => {
     toast({
@@ -343,6 +382,66 @@ export default function Settings() {
             </Card>
           </div>
         )}
+      </div>
+
+      {/* Amazon Reviews Importer */}
+      <div className="space-y-4 pt-6 border-t">
+        <div>
+          <h2 className="text-lg font-semibold mb-1">Amazon Reviews Importer</h2>
+          <p className="text-sm text-muted-foreground">
+            Import Amazon product reviews and process them through AI for complaint management
+          </p>
+        </div>
+
+        <Card className="border-primary/20">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Package className="w-5 h-5 text-primary" />
+              <CardTitle>Import from Amazon</CardTitle>
+            </div>
+            <CardDescription>
+              Enter an Amazon ASIN to fetch reviews, analyze sentiment, and add them to your dashboard
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex gap-2">
+              <Input
+                placeholder="Enter Amazon ASIN (e.g., B0C1ZQRKQ2)"
+                value={asin}
+                onChange={(e) => setAsin(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    handleImportReviews();
+                  }
+                }}
+                data-testid="input-asin-import"
+              />
+              <Button
+                onClick={handleImportReviews}
+                disabled={importMutation.isPending}
+                data-testid="button-import-reviews"
+              >
+                {importMutation.isPending ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    <Download className="w-4 h-4 mr-2" />
+                    Import Reviews
+                  </>
+                )}
+              </Button>
+            </div>
+            
+            <div className="text-xs text-muted-foreground space-y-1">
+              <p>• Reviews will be analyzed for sentiment, category, and severity</p>
+              <p>• AI-generated replies will be created for each review</p>
+              <p>• Imported reviews will appear on your Dashboard</p>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       <div className="pt-6 border-t">
