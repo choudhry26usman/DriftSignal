@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import driftSignalLogo from "@assets/Gemini_Generated_Image_20rbpd20rbpd20rb_1763885742664.png";
 
 export default function Login() {
   const [, setLocation] = useLocation();
@@ -37,7 +38,7 @@ export default function Login() {
         <CardHeader className="space-y-1 text-center">
           <div className="mx-auto mb-4">
             <img 
-              src="/attached_assets/image_1763885624491.png" 
+              src={driftSignalLogo} 
               alt="DriftSignal Logo" 
               className="h-16 w-16 mx-auto"
             />

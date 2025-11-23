@@ -14,6 +14,7 @@ import {
   SidebarHeader,
 } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
+import driftSignalLogo from "@assets/Gemini_Generated_Image_20rbpd20rbpd20rb_1763885742664.png";
 
 const mainMenuItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard, testId: "link-dashboard" },
@@ -38,7 +39,7 @@ export function AppSidebar() {
       <SidebarHeader className="p-4">
         <div className="flex items-center gap-3">
           <img 
-            src="/attached_assets/image_1763885624491.png" 
+            src={driftSignalLogo} 
             alt="DriftSignal Logo" 
             className="h-10 w-10"
           />
