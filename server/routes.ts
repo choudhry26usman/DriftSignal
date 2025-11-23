@@ -1,17 +1,23 @@
 import type { Express } from "express";
+import { createServer, type Server } from "http";
 import { getUncachableAgentMailClient } from "./integrations/agentmail";
 import { getUncachableOutlookClient } from "./integrations/outlook";
 
-export function registerRoutes(app: Express) {
+export async function registerRoutes(app: Express): Promise<Server> {
   // Fetch emails from AgentMail
   app.get("/api/emails", async (req, res) => {
     try {
       const agentMail = await getUncachableAgentMailClient();
-      const emails = await agentMail.emails.list();
-      res.json(emails);
+      const response = await agentMail.emails.list();
+      
+      // Defensive parsing with type validation
+      const emails = Array.isArray(response?.emails) ? response.emails : [];
+      const total = typeof response?.total === 'number' ? response.total : emails.length;
+      
+      res.json({ emails, total });
     } catch (error) {
       console.error("Error fetching emails:", error);
-      res.status(500).json({ error: "Failed to fetch emails" });
+      res.status(500).json({ error: "Failed to fetch emails", emails: [], total: 0 });
     }
   });
 
@@ -107,4 +113,7 @@ Response:`;
       res.status(500).json({ error: "Failed to generate AI reply" });
     }
   });
+
+  const httpServer = createServer(app);
+  return httpServer;
 }

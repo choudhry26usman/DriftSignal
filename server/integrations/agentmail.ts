@@ -32,8 +32,9 @@ async function getCredentials() {
 
 export async function getUncachableAgentMailClient() {
   const {apiKey} = await getCredentials();
-  return new AgentMail({
+  const agentMail = new (AgentMail as any)({
     baseUrl: "https://api.agentmail.to",
     apiKey: apiKey
   });
+  return agentMail;
 }

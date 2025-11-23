@@ -107,17 +107,18 @@ export default function Dashboard() {
   const [sentimentFilter, setSentimentFilter] = useState("all");
   const { toast } = useToast();
 
-  const { data: emails, refetch: refetchEmails, isLoading: isLoadingEmails } = useQuery({
+  const { data: emailData, refetch: refetchEmails, isLoading: isLoadingEmails } = useQuery<{ emails: any[]; total: number }>({
     queryKey: ["/api/emails"],
     enabled: false,
   });
 
   const handleSyncEmails = async () => {
     try {
-      await refetchEmails();
+      const result = await refetchEmails();
+      const emailCount = result.data?.total || 0;
       toast({
         title: "Emails Synced",
-        description: "Successfully synced emails from AgentMail inbox.",
+        description: `Successfully synced ${emailCount} emails from AgentMail inbox.`,
       });
     } catch (error) {
       toast({

@@ -63,11 +63,7 @@ export function ReviewDetailModal({ open, onOpenChange, review }: ReviewDetailMo
 
   const sendEmailMutation = useMutation({
     mutationFn: async (data: { to: string; subject: string; body: string }) => {
-      return apiRequest("/api/send-email", {
-        method: "POST",
-        body: JSON.stringify(data),
-        headers: { "Content-Type": "application/json" },
-      });
+      return apiRequest("POST", "/api/send-email", data);
     },
     onSuccess: () => {
       toast({
@@ -88,14 +84,10 @@ export function ReviewDetailModal({ open, onOpenChange, review }: ReviewDetailMo
   const generateAIReply = async () => {
     setIsGenerating(true);
     try {
-      const response = await apiRequest("/api/generate-reply", {
-        method: "POST",
-        body: JSON.stringify({
-          reviewContent: review.content,
-          sentiment: review.sentiment,
-          category: review.category,
-        }),
-        headers: { "Content-Type": "application/json" },
+      const response = await apiRequest("POST", "/api/generate-reply", {
+        reviewContent: review.content,
+        sentiment: review.sentiment,
+        category: review.category,
       });
       const data = await response.json();
       setReplyText(data.reply);
