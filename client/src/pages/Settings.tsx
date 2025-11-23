@@ -3,7 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Mail, Zap, CheckCircle, XCircle, ExternalLink, RefreshCw, Loader2, ShoppingCart, Package, Download } from "lucide-react";
+import { Mail, Zap, CheckCircle, XCircle, ExternalLink, RefreshCw, Loader2, ShoppingCart, Package, Download, Store } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useState } from "react";
@@ -20,11 +20,13 @@ interface ConnectionStatusResponse {
   outlook: IntegrationStatus;
   openrouter: IntegrationStatus;
   axesso: IntegrationStatus;
+  shopify: IntegrationStatus;
 }
 
 export default function Settings() {
   const { toast } = useToast();
   const [asin, setAsin] = useState("");
+  const [shopifyProductId, setShopifyProductId] = useState("");
 
   const { data: statusData, isLoading, refetch, isFetching } = useQuery<ConnectionStatusResponse>({
     queryKey: ['/api/integrations/status'],
@@ -54,6 +56,29 @@ export default function Settings() {
     },
   });
 
+  const shopifyImportMutation = useMutation({
+    mutationFn: async (productId: string) => {
+      const response = await apiRequest("POST", "/api/shopify/import-reviews", { productId });
+      return await response.json();
+    },
+    onSuccess: (data: any) => {
+      toast({
+        title: "Success!",
+        description: `Imported ${data.imported} reviews from Shopify. Check your Dashboard!`,
+      });
+      setShopifyProductId("");
+      queryClient.invalidateQueries({ queryKey: ["/api/reviews/imported"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/products/tracked"] });
+    },
+    onError: (error: any) => {
+      toast({
+        variant: "destructive",
+        title: "Import failed",
+        description: error.message || "Please check your Shopify credentials and product ID",
+      });
+    },
+  });
+
   const handleImportReviews = () => {
     const trimmedAsin = asin.trim();
     if (!trimmedAsin) {
@@ -65,6 +90,19 @@ export default function Settings() {
       return;
     }
     importMutation.mutate(trimmedAsin);
+  };
+
+  const handleShopifyImport = () => {
+    const trimmedId = shopifyProductId.trim();
+    if (!trimmedId) {
+      toast({
+        variant: "destructive",
+        title: "Product ID required",
+        description: "Please enter a Shopify product ID",
+      });
+      return;
+    }
+    shopifyImportMutation.mutate(trimmedId);
   };
 
   const handleTestConnection = async (integration: string) => {
@@ -382,6 +420,70 @@ export default function Settings() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Shopify Integration */}
+            <Card data-testid="card-integration-shopify">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-primary/10 rounded-md">
+                      <Store className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-base">Shopify</CardTitle>
+                      <CardDescription>Connect to your Shopify store to import product reviews</CardDescription>
+                    </div>
+                  </div>
+                  <Badge 
+                    variant={statusData?.shopify.connected ? "default" : "destructive"}
+                    data-testid="badge-shopify-status"
+                  >
+                    {statusData?.shopify.connected ? (
+                      <>
+                        <CheckCircle className="h-3 w-3 mr-1" />
+                        Connected
+                      </>
+                    ) : (
+                      <>
+                        <XCircle className="h-3 w-3 mr-1" />
+                        Disconnected
+                      </>
+                    )}
+                  </Badge>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {statusData?.shopify.details && (
+                  <p className="text-sm text-muted-foreground">
+                    {statusData.shopify.details}
+                  </p>
+                )}
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleTestConnection('shopify')}
+                    data-testid="button-test-shopify"
+                  >
+                    Test Connection
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      toast({
+                        title: "Configure Shopify",
+                        description: "Add SHOPIFY_SHOP (your-store.myshopify.com) and SHOPIFY_ACCESS_TOKEN to environment variables",
+                      });
+                    }}
+                    data-testid="link-configure-shopify"
+                  >
+                    <ExternalLink className="h-3 w-3 mr-1" />
+                    How to Configure
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         )}
       </div>
@@ -441,6 +543,67 @@ export default function Settings() {
               <p>• Reviews will be analyzed for sentiment, category, and severity</p>
               <p>• AI-generated replies will be created for each review</p>
               <p>• Imported reviews will appear on your Dashboard</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Shopify Reviews Importer */}
+      <div className="space-y-4 pt-6 border-t">
+        <div>
+          <h2 className="text-lg font-semibold mb-1">Shopify Reviews Importer</h2>
+          <p className="text-sm text-muted-foreground">
+            Import Shopify product reviews and process them through AI for complaint management
+          </p>
+        </div>
+
+        <Card className="border-primary/20">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Store className="w-5 h-5 text-primary" />
+              <CardTitle>Import from Shopify</CardTitle>
+            </div>
+            <CardDescription>
+              Enter a Shopify product ID to fetch reviews, analyze sentiment, and add them to your dashboard
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex gap-2">
+              <Input
+                placeholder="Enter Shopify Product ID (e.g., gid://shopify/Product/7482579091675)"
+                value={shopifyProductId}
+                onChange={(e) => setShopifyProductId(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    handleShopifyImport();
+                  }
+                }}
+                data-testid="input-shopify-product-id"
+              />
+              <Button
+                onClick={handleShopifyImport}
+                disabled={shopifyImportMutation.isPending}
+                data-testid="button-import-shopify-reviews"
+              >
+                {shopifyImportMutation.isPending ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    <Download className="w-4 h-4 mr-2" />
+                    Import Reviews
+                  </>
+                )}
+              </Button>
+            </div>
+            
+            <div className="text-xs text-muted-foreground space-y-1">
+              <p>• Reviews will be analyzed for sentiment, category, and severity</p>
+              <p>• AI-generated replies will be created for each review</p>
+              <p>• Imported reviews will appear on your Dashboard</p>
+              <p>• Product ID format: gid://shopify/Product/[ID] or just the numeric ID</p>
             </div>
           </CardContent>
         </Card>
