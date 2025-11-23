@@ -452,6 +452,128 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Import Shopify reviews - fetch from Shopify and process through AI
+  app.post("/api/shopify/import-reviews", async (req, res) => {
+    try {
+      let { productId } = req.body;
+      
+      if (!productId || typeof productId !== 'string') {
+        return res.status(400).json({ error: "Product ID is required" });
+      }
+      
+      console.log(`Importing Shopify reviews for product: ${productId}`);
+      
+      // Fetch reviews from Shopify
+      const { getProductReviews } = await import("./integrations/shopify");
+      const result = await getProductReviews(productId);
+      
+      if (!result.reviews || result.reviews.length === 0) {
+        return res.json({ 
+          imported: 0, 
+          message: "No reviews found for this product" 
+        });
+      }
+
+      const productName = `Shopify Product ${productId.split('/').pop()}`;
+      
+      console.log(`Processing ${result.reviews.length} Shopify reviews...`);
+      
+      // Process each review through AI
+      const processedReviews = [];
+      for (const review of result.reviews) {
+        try {
+          const reviewText = review.content || '';
+          const userName = review.author || 'Anonymous';
+          const reviewTitle = review.title || 'Review';
+          
+          // Analyze the review
+          const analysis = await analyzeReview(
+            reviewText,
+            userName,
+            "Shopify"
+          );
+
+          // Generate AI reply
+          const aiReply = await generateReply(
+            reviewText,
+            userName,
+            "Shopify",
+            analysis.sentiment,
+            analysis.severity
+          );
+
+          const processedReview = {
+            id: `shopify-${productId}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            marketplace: "Shopify" as const,
+            title: reviewTitle,
+            content: reviewText,
+            customerName: userName,
+            customerEmail: `${userName.toLowerCase().replace(/\s+/g, '.')}@shopify.customer`,
+            rating: review.rating,
+            sentiment: analysis.sentiment,
+            category: analysis.category,
+            severity: analysis.severity,
+            status: "open",
+            createdAt: new Date(review.createdAt),
+            aiSuggestedReply: aiReply,
+            verified: review.verified || false,
+          };
+
+          processedReviews.push(processedReview);
+          console.log(`✓ Processed review from ${userName} (${analysis.sentiment}/${analysis.severity})`);
+        } catch (error) {
+          console.error(`Failed to process review:`, error);
+        }
+      }
+
+      // Store in global reviews array (in-memory for now)
+      if (!global.importedReviews) {
+        global.importedReviews = [];
+      }
+      global.importedReviews.push(...processedReviews);
+
+      // Track the product
+      if (!global.trackedProducts) {
+        global.trackedProducts = [];
+      }
+      
+      const existingProductIndex = global.trackedProducts.findIndex(
+        p => p.productId === productId && p.platform === "Shopify"
+      );
+      
+      if (existingProductIndex >= 0) {
+        global.trackedProducts[existingProductIndex] = {
+          ...global.trackedProducts[existingProductIndex],
+          reviewCount: global.trackedProducts[existingProductIndex].reviewCount + processedReviews.length,
+          lastImported: new Date(),
+        };
+      } else {
+        global.trackedProducts.push({
+          id: `product-shopify-${productId}`,
+          platform: "Shopify",
+          productId,
+          productName,
+          reviewCount: processedReviews.length,
+          lastImported: new Date(),
+        });
+      }
+
+      console.log(`✓ Successfully imported ${processedReviews.length} Shopify reviews`);
+      
+      res.json({
+        imported: processedReviews.length,
+        productId,
+        productName,
+        reviews: processedReviews
+      });
+    } catch (error: any) {
+      console.error("Failed to import Shopify reviews:", error);
+      res.status(500).json({ 
+        error: error.message || "Failed to import Shopify reviews" 
+      });
+    }
+  });
+
   // Check integration status
   app.get("/api/integrations/status", async (req, res) => {
     const status = {
@@ -475,6 +597,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       },
       axesso: {
         name: "Axesso (Amazon Data)",
+        connected: false,
+        details: "",
+        lastChecked: new Date().toISOString(),
+      },
+      shopify: {
+        name: "Shopify",
         connected: false,
         details: "",
         lastChecked: new Date().toISOString(),
@@ -526,6 +654,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       status.axesso.connected = false;
       status.axesso.details = error.message || "API key not configured";
+    }
+
+    // Check Shopify
+    try {
+      const { testShopifyConnection } = await import("./integrations/shopify");
+      const result = await testShopifyConnection();
+      status.shopify.connected = result.connected;
+      status.shopify.details = result.details;
+    } catch (error: any) {
+      status.shopify.connected = false;
+      status.shopify.details = error.message || "Not configured";
     }
 
     res.json(status);
