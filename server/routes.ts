@@ -602,6 +602,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update review status (for workflow management)
+  app.patch("/api/reviews/:reviewId/status", async (req, res) => {
+    try {
+      const { reviewId } = req.params;
+      const { status } = req.body;
+
+      if (!status || !['open', 'in_progress', 'resolved'].includes(status)) {
+        return res.status(400).json({ 
+          error: "Invalid status. Must be one of: open, in_progress, resolved" 
+        });
+      }
+
+      await storage.updateReviewStatus(reviewId, status);
+      res.json({ success: true, reviewId, status });
+    } catch (error: any) {
+      console.error("Failed to update review status:", error);
+      res.status(500).json({ error: "Failed to update review status" });
+    }
+  });
+
   // Get all tracked products
   app.get("/api/products/tracked", async (req, res) => {
     try {
