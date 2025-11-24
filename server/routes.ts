@@ -629,6 +629,163 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Refresh reviews for a specific product
+  app.post("/api/products/refresh", async (req, res) => {
+    try {
+      const { productId, platform } = req.body;
+      
+      if (!productId || !platform) {
+        return res.status(400).json({ error: "Product ID and platform are required" });
+      }
+
+      console.log(`Refreshing reviews for ${platform} product: ${productId}`);
+
+      let importedCount = 0;
+      let skippedCount = 0;
+
+      // Fetch latest reviews based on platform
+      if (platform === "Amazon") {
+        const { getProductReviews } = await import("./integrations/axesso");
+        const result = await getProductReviews(productId);
+        
+        if (!result.reviews || result.reviews.length === 0) {
+          return res.json({ 
+            imported: 0,
+            skipped: 0,
+            message: "No reviews found for this product" 
+          });
+        }
+
+        // Process each review with duplicate detection
+        for (const review of result.reviews) {
+          try {
+            const externalReviewId = review.reviewId || review.id || null;
+            if (externalReviewId) {
+              const exists = await storage.checkReviewExists(externalReviewId, "Amazon");
+              if (exists) {
+                skippedCount++;
+                continue;
+              }
+            }
+            
+            const reviewText = review.text || '';
+            const userName = review.userName || 'Anonymous';
+            const reviewTitle = review.title || 'Review';
+            const ratingString = review.rating || '0';
+            const reviewDate = review.date || new Date().toISOString();
+            
+            const analysis = await analyzeReview(reviewText, userName, "Amazon");
+            const aiReply = await generateReply(reviewText, userName, "Amazon", analysis.sentiment, analysis.severity);
+
+            await storage.createReview({
+              externalReviewId,
+              marketplace: "Amazon",
+              productId,
+              title: reviewTitle,
+              content: reviewText,
+              customerName: userName,
+              customerEmail: `${userName.toLowerCase().replace(/\s+/g, '.')}@amazon.customer`,
+              rating: parseFloat(ratingString.replace(/[^\d.]/g, '')),
+              sentiment: analysis.sentiment,
+              category: analysis.category,
+              severity: analysis.severity,
+              status: "open",
+              createdAt: new Date(reviewDate),
+              aiSuggestedReply: aiReply,
+              verified: 1,
+            });
+
+            importedCount++;
+          } catch (error) {
+            console.error(`Failed to process review:`, error);
+            skippedCount++;
+          }
+        }
+      } else if (platform === "Walmart") {
+        const { fetchWalmartProduct } = await import("./integrations/walmart");
+        
+        // Construct Walmart product URL
+        const productUrl = `https://www.walmart.com/ip/${productId}`;
+        const result = await fetchWalmartProduct(productUrl);
+        
+        if (!result.reviews || result.reviews.length === 0) {
+          return res.json({ 
+            imported: 0,
+            skipped: 0,
+            message: "No reviews found for this Walmart product" 
+          });
+        }
+
+        // Process each review with duplicate detection
+        for (const review of result.reviews) {
+          try {
+            const externalReviewId = review.reviewId || review.id || null;
+            if (externalReviewId) {
+              const exists = await storage.checkReviewExists(externalReviewId, "Walmart");
+              if (exists) {
+                skippedCount++;
+                continue;
+              }
+            }
+            
+            const reviewText = review.text || '';
+            const userName = review.reviewerName || 'Anonymous';
+            const reviewTitle = review.title || 'Review';
+            
+            const analysis = await analyzeReview(reviewText, userName, "Walmart");
+            const aiReply = await generateReply(reviewText, userName, "Walmart", analysis.sentiment, analysis.severity);
+
+            await storage.createReview({
+              externalReviewId,
+              marketplace: "Walmart",
+              productId,
+              title: reviewTitle,
+              content: reviewText,
+              customerName: userName,
+              customerEmail: `${userName.toLowerCase().replace(/\s+/g, '.')}@walmart.customer`,
+              rating: review.rating,
+              sentiment: analysis.sentiment,
+              category: analysis.category,
+              severity: analysis.severity,
+              status: "open",
+              createdAt: new Date(review.date),
+              aiSuggestedReply: aiReply,
+              verified: 1,
+            });
+
+            importedCount++;
+          } catch (error) {
+            console.error(`Failed to process review:`, error);
+            skippedCount++;
+          }
+        }
+      } else {
+        return res.status(400).json({ error: "Unsupported platform for refresh" });
+      }
+
+      // Update last imported timestamp
+      const product = await storage.getProductByIdentifier(platform, productId);
+      if (product) {
+        await storage.updateProductLastImported(product.id);
+      }
+
+      console.log(`✓ Refreshed ${platform} product: ${importedCount} new, ${skippedCount} duplicates`);
+      
+      res.json({
+        imported: importedCount,
+        skipped: skippedCount,
+        message: importedCount > 0 
+          ? `Imported ${importedCount} new review${importedCount !== 1 ? 's' : ''}`
+          : "No new reviews found"
+      });
+    } catch (error: any) {
+      console.error("Failed to refresh product reviews:", error);
+      res.status(500).json({ 
+        error: error.message || "Failed to refresh product reviews" 
+      });
+    }
+  });
+
   // Import Shopify reviews - fetch from Shopify and process through AI
   app.post("/api/shopify/import-reviews", async (req, res) => {
     try {
