@@ -150,7 +150,7 @@ export function ImportReviewsModal({ open, onOpenChange }: ImportReviewsModalPro
                 <SelectItem value="Amazon">Amazon</SelectItem>
                 <SelectItem value="Shopify">Shopify</SelectItem>
                 <SelectItem value="Walmart">Walmart</SelectItem>
-                <SelectItem value="Website">Website</SelectItem>
+                <SelectItem value="Mailbox">Mailbox</SelectItem>
               </SelectContent>
             </Select>
           </div>

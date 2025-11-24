@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Star, ThumbsUp, ThumbsDown, Minus, Send, Save, Mail, Sparkles, Globe } from "lucide-react";
+import { Star, ThumbsUp, ThumbsDown, Minus, Send, Save, Mail, Sparkles } from "lucide-react";
 import { SiAmazon, SiShopify, SiWalmart } from "react-icons/si";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
@@ -22,7 +22,7 @@ const marketplaceIcons = {
   Amazon: SiAmazon,
   Shopify: SiShopify,
   Walmart: SiWalmart,
-  Website: Globe,
+  Mailbox: Mail,
 };
 
 const sentimentConfig = {

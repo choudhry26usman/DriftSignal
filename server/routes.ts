@@ -230,7 +230,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Import as review
           const newReview = await storage.createReview({
             externalReviewId,
-            marketplace: 'website',
+            marketplace: 'mailbox',
             productId: 'email-review',
             title: subject,
             content: emailBody.substring(0, 5000), // Limit content length

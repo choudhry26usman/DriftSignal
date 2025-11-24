@@ -1,6 +1,5 @@
-import { LayoutDashboard, Workflow, BarChart3, Upload, Filter, Settings } from "lucide-react";
+import { LayoutDashboard, Workflow, BarChart3, Upload, Filter, Settings, Mail } from "lucide-react";
 import { SiAmazon, SiShopify, SiWalmart } from "react-icons/si";
-import { Globe, ShoppingCart } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useState, useMemo } from "react";
 import {
@@ -30,7 +29,7 @@ const marketplaces = [
   { title: "Amazon", icon: SiAmazon, color: "#FF9900" },
   { title: "Shopify", icon: SiShopify, color: "#7AB55C" },
   { title: "Walmart", icon: SiWalmart, color: "#0071CE" },
-  { title: "Website", icon: Globe, color: "#6B7280" },
+  { title: "Mailbox", icon: Mail, color: "#0078D4" },
 ];
 
 export function AppSidebar() {

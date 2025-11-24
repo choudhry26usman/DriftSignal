@@ -1,7 +1,7 @@
 // Review types
 export interface Review {
   id: string;
-  marketplace: "Amazon" | "eBay" | "Shopify" | "PayPal" | "Alibaba" | "Website";
+  marketplace: "Amazon" | "eBay" | "Shopify" | "PayPal" | "Alibaba" | "Mailbox";
   title: string;
   content: string;
   customerName: string;

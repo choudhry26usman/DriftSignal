@@ -2,11 +2,35 @@
 
 ## Overview
 
-DriftSignal is a SaaS platform designed for centralized management of customer reviews and complaints across various marketplace platforms (Amazon, Shopify, Walmart, and Website). It offers AI-powered analysis, sentiment tracking, and workflow management for customer feedback. The platform features a premium, enterprise-grade interface with a glass-morphic design inspired by Linear, Notion, and Asana. Its core capabilities include unified multi-marketplace review aggregation, AI-powered sentiment analysis and categorization using Grok 4.1 Fast LLM, Kanban-style workflow management, analytics for review trends, email integration for customer communication, CSV/JSON file import, and theme switching.
+DriftSignal is a SaaS platform designed for centralized management of customer reviews and complaints across various marketplace platforms (Amazon, Shopify, Walmart, and Mailbox for email-imported reviews). It offers AI-powered analysis, sentiment tracking, and workflow management for customer feedback. The platform features a premium, enterprise-grade interface with a glass-morphic design inspired by Linear, Notion, and Asana. Its core capabilities include unified multi-marketplace review aggregation, AI-powered sentiment analysis and categorization using Grok 4.1 Fast LLM, Kanban-style workflow management, analytics for review trends, email integration for customer communication, CSV/JSON file import, and theme switching.
 
 ## Recent Changes (November 24, 2025)
 
-### Color Scheme Update (Latest)
+### Mailbox Marketplace for Outlook Emails (Latest)
+- **Renamed** marketplace from "Website" to "Mailbox" for Outlook email imports
+  - Updated shared/types.ts Review interface to use "Mailbox" instead of "Website"
+  - Updated server routes to set marketplace='mailbox' for email-imported reviews
+  - Updated all frontend components (ReviewCard, WorkflowBoard, ReviewDetailModal, app-sidebar, Analytics, ImportReviewsModal)
+  - Changed icon from Globe to Mail (lucide-react) for better semantic representation
+  - Mailbox marketplace color: #0078D4 (Microsoft blue) for visual consistency with Outlook
+- **Benefit**: Clear distinction between reviews from email inbox vs. website forms
+- **Filtering**: Users can now filter specifically for email-imported reviews using "Mailbox" filter
+- **Status**: Complete migration from Website to Mailbox terminology
+
+### Outlook-Only Email Architecture
+- **Migrated** from dual email system (AgentMail + Outlook) to single Outlook-only architecture
+  - Removed AgentMail integration completely from codebase
+  - Removed email inbox UI display from Dashboard (emails processed in background)
+  - Cleaned up shared/types.ts by removing Email, EmailThread, and EmailListResponse interfaces
+  - Removed AgentMail integration card from Settings page
+  - Updated ConnectionStatusResponse interface to only include Outlook
+- **Automatic Email Monitoring**: AI-powered email classification detects reviews/complaints from Outlook inbox
+  - `/api/emails/sync` endpoint fetches emails from Outlook, classifies with AI, auto-imports detected reviews
+  - Dashboard "Sync Emails" button triggers AI classification and automatic review import
+  - Reviews imported with marketplace='mailbox' for easy filtering
+- **Status**: Outlook (drift_signal@outlook.com) serves as single inbox for both receiving and sending emails
+
+### Color Scheme Update
 - **Changed primary color** from purple to blue to match gradient background theme
   - Old: `250 95% 63%` (Purple)
   - New: `210 100% 56%` (Blue - vibrant sky blue)

@@ -26,7 +26,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Card, CardContent } from "@/components/ui/card";
 import { format } from "date-fns";
 
-type Marketplace = "Amazon" | "Shopify" | "Walmart" | "Website";
+type Marketplace = "Amazon" | "Shopify" | "Walmart" | "Mailbox";
 type Sentiment = "positive" | "neutral" | "negative";
 type Status = "open" | "in_progress" | "resolved";
 
@@ -224,7 +224,7 @@ export default function Analytics() {
                 <div className="space-y-2">
                   <Label>Marketplace</Label>
                   <div className="flex flex-wrap gap-2">
-                    {(['Amazon', 'Shopify', 'Walmart', 'Website'] as Marketplace[]).map(marketplace => (
+                    {(['Amazon', 'Shopify', 'Walmart', 'Mailbox'] as Marketplace[]).map(marketplace => (
                       <Badge
                         key={marketplace}
                         variant={selectedMarketplaces.includes(marketplace) ? "default" : "outline"}

@@ -3,14 +3,14 @@ import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { SiAmazon, SiShopify, SiWalmart } from "react-icons/si";
-import { Globe, Star, ThumbsUp, ThumbsDown, Minus } from "lucide-react";
+import { Mail, Star, ThumbsUp, ThumbsDown, Minus } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const marketplaceIcons = {
   Amazon: SiAmazon,
   Shopify: SiShopify,
   Walmart: SiWalmart,
-  Website: Globe,
+  Mailbox: Mail,
 };
 
 const sentimentConfig = {
