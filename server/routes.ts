@@ -6,6 +6,8 @@ import { testAxessoConnection } from "./integrations/axesso";
 import { testWalmartConnection } from "./integrations/walmart";
 import { analyzeReview, generateReply } from "./ai/service";
 import { z } from "zod";
+import multer from "multer";
+import { parse } from "csv-parse/sync";
 
 // Email validation schema
 const emailSchema = z.object({
@@ -267,6 +269,117 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Axesso test error:", error);
       res.status(500).json({ error: error.message || "Failed to fetch data from Axesso" });
+    }
+  });
+
+  // Configure multer for file upload (in-memory storage)
+  const upload = multer({ 
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit
+  });
+
+  // Generic file import endpoint for CSV/JSON reviews
+  app.post("/api/reviews/import-file", upload.single('file'), async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: "No file uploaded" });
+      }
+
+      const { marketplace } = req.body;
+      if (!marketplace) {
+        return res.status(400).json({ error: "Marketplace is required" });
+      }
+
+      const fileContent = req.file.buffer.toString('utf-8');
+      let reviews: any[] = [];
+
+      // Parse based on file type
+      if (req.file.mimetype === 'application/json' || req.file.originalname.endsWith('.json')) {
+        // Parse JSON
+        reviews = JSON.parse(fileContent);
+      } else if (req.file.mimetype === 'text/csv' || req.file.originalname.endsWith('.csv')) {
+        // Parse CSV
+        reviews = parse(fileContent, {
+          columns: true,
+          skip_empty_lines: true,
+          trim: true
+        });
+      } else {
+        return res.status(400).json({ error: "Unsupported file type. Use CSV or JSON." });
+      }
+
+      if (!Array.isArray(reviews) || reviews.length === 0) {
+        return res.status(400).json({ error: "No reviews found in file" });
+      }
+
+      console.log(`Processing ${reviews.length} reviews from file for ${marketplace}...`);
+
+      // Process each review through AI
+      const processedReviews = [];
+      for (const review of reviews) {
+        try {
+          const reviewText = review.content || review.Content || review.text || '';
+          const title = review.title || review.Title || '';
+          const customerName = review.customerName || review['Customer Name'] || review.customer_name || 'Anonymous';
+          const customerEmail = review.customerEmail || review['Customer Email'] || review.customer_email || '';
+          const rating = parseInt(review.rating || review.Rating || '0');
+          const createdAt = review.createdAt || review['Created At'] || review.created_at || new Date().toISOString();
+
+          if (!reviewText) {
+            console.log(`Skipping review with no content`);
+            continue;
+          }
+
+          // Analyze review with AI
+          const analysis = await analyzeReview(reviewText);
+          
+          // Generate AI reply
+          const aiReply = await generateReply(
+            reviewText,
+            customerName,
+            marketplace,
+            analysis.sentiment,
+            analysis.severity
+          );
+
+          processedReviews.push({
+            id: `${marketplace.toLowerCase()}-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+            marketplace,
+            title: title || `Review from ${customerName}`,
+            content: reviewText,
+            customerName,
+            customerEmail,
+            rating: rating || undefined,
+            sentiment: analysis.sentiment,
+            category: analysis.category,
+            severity: analysis.severity,
+            status: "pending",
+            createdAt: new Date(createdAt),
+            aiSuggestedReply: aiReply,
+            verified: false
+          });
+        } catch (reviewError) {
+          console.error(`Error processing review:`, reviewError);
+          continue;
+        }
+      }
+
+      // Store in global array
+      if (!global.importedReviews) {
+        global.importedReviews = [];
+      }
+      global.importedReviews.push(...processedReviews);
+
+      console.log(`Successfully imported ${processedReviews.length} reviews from file`);
+
+      res.json({ 
+        imported: processedReviews.length,
+        skipped: reviews.length - processedReviews.length,
+        message: `Successfully imported ${processedReviews.length} reviews`
+      });
+    } catch (error: any) {
+      console.error("Error importing reviews from file:", error);
+      res.status(500).json({ error: error.message || "Failed to import reviews" });
     }
   });
 
