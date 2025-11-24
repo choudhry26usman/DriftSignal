@@ -9,6 +9,29 @@ import { z } from "zod";
 import multer from "multer";
 import { parse } from "csv-parse/sync";
 
+// Helper function to strip HTML tags and clean email content
+function stripHtmlTags(html: string): string {
+  if (!html) return '';
+  
+  // Remove HTML tags
+  let text = html.replace(/<[^>]*>/g, ' ');
+  
+  // Decode common HTML entities
+  text = text
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&apos;/g, "'");
+  
+  // Remove multiple spaces and trim
+  text = text.replace(/\s+/g, ' ').trim();
+  
+  return text;
+}
+
 // Email validation schema
 const emailSchema = z.object({
   id: z.string(),
@@ -188,7 +211,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const importedReviews = [];
       
       for (const msg of rawEmails) {
-        const emailBody = msg.body?.content || msg.bodyPreview || '';
+        const rawEmailBody = msg.body?.content || msg.bodyPreview || '';
+        const emailBody = stripHtmlTags(rawEmailBody);
         const senderName = msg.from?.emailAddress?.name || 'Unknown';
         const senderEmail = msg.from?.emailAddress?.address || '';
         const subject = msg.subject || '(No Subject)';
