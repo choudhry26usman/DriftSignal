@@ -4,7 +4,7 @@ import { getUncachableAgentMailClient } from "./integrations/agentmail";
 import { getUncachableOutlookClient } from "./integrations/outlook";
 import { testAxessoConnection } from "./integrations/axesso";
 import { testWalmartConnection } from "./integrations/walmart";
-import { analyzeReview, generateReply } from "./ai/service";
+import { analyzeReview, generateReply, classifyEmail } from "./ai/service";
 import { storage } from "./storage";
 import { z } from "zod";
 import multer from "multer";
@@ -64,53 +64,42 @@ function generateThreadId(email: any): string {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Fetch emails from AgentMail
+  // Fetch emails from Outlook and auto-import reviews
   app.get("/api/emails", async (req, res) => {
     try {
-      const agentMail = await getUncachableAgentMailClient();
+      const outlookClient = await getUncachableOutlookClient();
       
-      // First, get list of inboxes
-      let inboxesResponse: any;
-      try {
-        inboxesResponse = await (agentMail as any).inboxes.list();
-      } catch (inboxError: any) {
-        console.warn("Failed to list inboxes:", inboxError.message);
-        // Return empty response instead of error if AgentMail is not configured
-        return res.json({ emails: [], threads: [], total: 0 });
-      }
+      // Fetch recent emails from Outlook inbox (last 50 messages)
+      const messagesResponse = await outlookClient
+        .api('/me/messages')
+        .top(50)
+        .select('id,subject,from,receivedDateTime,bodyPreview,body,conversationId,isRead')
+        .orderby('receivedDateTime DESC')
+        .get();
       
-      const inboxes = Array.isArray(inboxesResponse?.inboxes) ? inboxesResponse.inboxes : [];
+      const rawEmails = Array.isArray(messagesResponse?.value) ? messagesResponse.value : [];
+      console.log(`Found ${rawEmails.length} Outlook messages`);
       
-      // If no inboxes, return empty response
-      if (inboxes.length === 0) {
-        console.log("No inboxes found in AgentMail");
-        return res.json({ emails: [], threads: [], total: 0 });
-      }
+      // Transform Outlook messages to our email format
+      const transformedEmails = rawEmails.map((msg: any) => ({
+        id: msg.id,
+        from: {
+          name: msg.from?.emailAddress?.name || 'Unknown',
+          email: msg.from?.emailAddress?.address || 'unknown@email.com',
+        },
+        subject: msg.subject || '(No Subject)',
+        body: msg.body?.content || msg.bodyPreview || '',
+        receivedAt: msg.receivedDateTime,
+        read: msg.isRead || false,
+        threadId: msg.conversationId,
+      }));
       
-      // Fetch messages from all inboxes (or just the first one for now)
-      const firstInbox = inboxes[0];
-      console.log(`Fetching messages from inbox: ${firstInbox.id}`);
-      
-      let messagesResponse: any;
-      try {
-        messagesResponse = await (agentMail as any).inboxes.messages.list(firstInbox.id);
-      } catch (messagesError: any) {
-        console.warn("Failed to fetch messages:", messagesError.message);
-        return res.json({ emails: [], threads: [], total: 0 });
-      }
-      
-      // Defensive parsing with type validation
-      const rawEmails = Array.isArray(messagesResponse?.messages) ? messagesResponse.messages : [];
-      console.log(`Found ${rawEmails.length} messages`);
-      
-      // Validate each email and add threadId
-      const validatedEmails = rawEmails
+      // Validate emails with schema
+      const validatedEmails = transformedEmails
         .map((email: Record<string, any>) => {
           try {
             const parsed = emailSchema.parse(email);
-            // Generate threadId using metadata or fallback to subject
-            const threadId = generateThreadId(email);
-            return { ...parsed, threadId };
+            return parsed;
           } catch (validationError) {
             console.warn("Invalid email record:", validationError);
             return null;
@@ -159,12 +148,122 @@ export async function registerRoutes(app: Express): Promise<Server> {
         new Date(b.lastReceivedAt).getTime() - new Date(a.lastReceivedAt).getTime()
       );
       
-      const total = typeof messagesResponse?.total === 'number' ? messagesResponse.total : validatedEmails.length;
+      res.json({ 
+        emails: validatedEmails, 
+        threads, 
+        total: validatedEmails.length 
+      });
+    } catch (error: any) {
+      console.error("Error fetching Outlook emails:", error);
+      res.status(500).json({ 
+        error: error.message || "Failed to fetch emails", 
+        emails: [], 
+        threads: [], 
+        total: 0 
+      });
+    }
+  });
+
+  // Sync Outlook emails and auto-import reviews using AI
+  app.post("/api/emails/sync", async (req, res) => {
+    try {
+      const outlookClient = await getUncachableOutlookClient();
       
-      res.json({ emails: validatedEmails, threads, total });
-    } catch (error) {
-      console.error("Error fetching emails:", error);
-      res.status(500).json({ error: "Failed to fetch emails", emails: [], threads: [], total: 0 });
+      // Fetch recent emails from Outlook (last 24 hours recommended)
+      const oneDayAgo = new Date();
+      oneDayAgo.setDate(oneDayAgo.getDate() - 1);
+      
+      const messagesResponse = await outlookClient
+        .api('/me/messages')
+        .filter(`receivedDateTime ge ${oneDayAgo.toISOString()}`)
+        .top(50)
+        .select('id,subject,from,receivedDateTime,bodyPreview,body')
+        .orderby('receivedDateTime DESC')
+        .get();
+      
+      const rawEmails = Array.isArray(messagesResponse?.value) ? messagesResponse.value : [];
+      console.log(`Syncing ${rawEmails.length} recent Outlook emails...`);
+      
+      let imported = 0;
+      let skipped = 0;
+      const importedReviews = [];
+      
+      for (const msg of rawEmails) {
+        const emailBody = msg.body?.content || msg.bodyPreview || '';
+        const senderName = msg.from?.emailAddress?.name || 'Unknown';
+        const senderEmail = msg.from?.emailAddress?.address || '';
+        const subject = msg.subject || '(No Subject)';
+        
+        // Skip if no meaningful content
+        if (!emailBody || emailBody.length < 10) {
+          skipped++;
+          continue;
+        }
+        
+        // Use AI to classify if this is a review/complaint
+        const classification = await classifyEmail(subject, emailBody, senderName);
+        
+        console.log(`Email "${subject}" - Review: ${classification.isReviewOrComplaint} (${classification.confidence}% confidence)`);
+        
+        if (classification.isReviewOrComplaint && classification.confidence > 50) {
+          // Check for duplicates using email ID
+          const externalReviewId = `outlook-${msg.id}`;
+          const existingReview = await storage.checkReviewExists(externalReviewId, 'website');
+          
+          if (existingReview) {
+            console.log(`Skipping duplicate review: ${subject}`);
+            skipped++;
+            continue;
+          }
+          
+          // Analyze the review content
+          const analysis = await analyzeReview(emailBody, senderName, 'Email');
+          
+          // Generate AI reply
+          const aiReply = await generateReply(
+            emailBody,
+            senderName,
+            'Email',
+            analysis.sentiment,
+            analysis.severity
+          );
+          
+          // Import as review
+          const newReview = await storage.createReview({
+            externalReviewId,
+            marketplace: 'website',
+            productId: 'email-review',
+            title: subject,
+            content: emailBody.substring(0, 5000), // Limit content length
+            customerName: senderName,
+            customerEmail: senderEmail,
+            rating: analysis.sentiment === 'positive' ? 5 : analysis.sentiment === 'negative' ? 1 : 3,
+            sentiment: analysis.sentiment,
+            category: analysis.category,
+            severity: analysis.severity,
+            status: 'open',
+            aiSuggestedReply: aiReply,
+            verifiedPurchase: false,
+          });
+          
+          importedReviews.push(newReview);
+          imported++;
+          console.log(`✅ Imported review from ${senderName}: "${subject}"`);
+        } else {
+          skipped++;
+        }
+      }
+      
+      res.json({ 
+        success: true,
+        imported,
+        skipped,
+        total: rawEmails.length,
+        message: `Imported ${imported} review(s), skipped ${skipped} email(s)`,
+      });
+    } catch (error: any) {
+      console.error("Error syncing Outlook emails:", error);
+      res.status(500).json({ error: error.message || "Failed to sync emails" });
     }
   });
 

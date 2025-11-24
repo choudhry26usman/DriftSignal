@@ -144,3 +144,76 @@ Write a response that addresses their concern directly and professionally. Keep 
 
   return response.trim();
 }
+
+export interface EmailClassification {
+  isReviewOrComplaint: boolean;
+  confidence: number;
+  reasoning: string;
+  suggestedAction: "import" | "ignore";
+}
+
+export async function classifyEmail(
+  emailSubject: string,
+  emailBody: string,
+  senderName: string
+): Promise<EmailClassification> {
+  const systemPrompt = `You are an AI assistant that classifies incoming emails to determine if they are customer reviews, complaints, or feedback about products/services.
+
+Reviews and complaints typically:
+- Mention product quality, shipping, customer service experiences
+- Express satisfaction or dissatisfaction with a purchase
+- Request refunds, replacements, or support
+- Describe specific issues or praise specific features
+- Include ratings or evaluations
+
+NOT reviews/complaints:
+- Newsletter subscriptions/unsubscriptions
+- Marketing emails
+- Order confirmations
+- Shipping notifications
+- Password resets
+- Spam or promotional content
+
+Respond in JSON format with: isReviewOrComplaint (boolean), confidence (0-100), reasoning (brief explanation), and suggestedAction ("import" or "ignore").`;
+
+  const userPrompt = `Classify this email from ${senderName}:
+
+Subject: "${emailSubject}"
+Body: "${emailBody.substring(0, 500)}"
+
+Is this a customer review or complaint that should be imported into our review management system?`;
+
+  const response = await callOpenRouter({
+    model: "x-ai/grok-4.1-fast",
+    messages: [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userPrompt },
+    ],
+    temperature: 0.2,
+    max_tokens: 300,
+  });
+
+  try {
+    const jsonMatch = response.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      throw new Error("No JSON found in response");
+    }
+    
+    const parsed = JSON.parse(jsonMatch[0]);
+    
+    return {
+      isReviewOrComplaint: parsed.isReviewOrComplaint || false,
+      confidence: parsed.confidence || 0,
+      reasoning: parsed.reasoning || "",
+      suggestedAction: parsed.suggestedAction || "ignore",
+    };
+  } catch (error) {
+    console.error("Failed to parse AI classification response:", error);
+    return {
+      isReviewOrComplaint: false,
+      confidence: 0,
+      reasoning: "Failed to classify email",
+      suggestedAction: "ignore",
+    };
+  }
+}
