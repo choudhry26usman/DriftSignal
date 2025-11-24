@@ -7,18 +7,47 @@ import {
   RatingDistributionChart,
   StatusDistributionChart
 } from "@/components/AnalyticsCharts";
-import { TrendingUp, TrendingDown, Star, Target, Calendar } from "lucide-react";
+import { TrendingUp, TrendingDown, Star, Target, Calendar, Filter, X } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { Badge } from "@/components/ui/badge";
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Card, CardContent } from "@/components/ui/card";
 import { format } from "date-fns";
+
+type Marketplace = "Amazon" | "Shopify" | "Walmart" | "Website";
+type Sentiment = "positive" | "neutral" | "negative";
+type Status = "open" | "in_progress" | "resolved";
 
 export default function Analytics() {
   const [dateRange, setDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({
     from: undefined,
     to: undefined,
   });
+  const [selectedProduct, setSelectedProduct] = useState<string>("");
+  const [selectedMarketplaces, setSelectedMarketplaces] = useState<Marketplace[]>([]);
+  const [selectedSentiments, setSelectedSentiments] = useState<Sentiment[]>([]);
+  const [selectedStatuses, setSelectedStatuses] = useState<Status[]>([]);
+  const [selectedRatings, setSelectedRatings] = useState<number[]>([]);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+
+  // Fetch tracked products
+  const { data: productsData } = useQuery({
+    queryKey: ['/api/products/tracked'],
+  });
+
+  const products = productsData?.products || [];
 
   // Build query params
   const queryParams = useMemo(() => {
@@ -29,8 +58,23 @@ export default function Analytics() {
     if (dateRange.to) {
       params.append('endDate', dateRange.to.toISOString());
     }
+    if (selectedProduct) {
+      params.append('productId', selectedProduct);
+    }
+    if (selectedMarketplaces.length > 0) {
+      params.append('marketplaces', selectedMarketplaces.join(','));
+    }
+    if (selectedSentiments.length > 0) {
+      params.append('sentiments', selectedSentiments.join(','));
+    }
+    if (selectedStatuses.length > 0) {
+      params.append('statuses', selectedStatuses.join(','));
+    }
+    if (selectedRatings.length > 0) {
+      params.append('ratings', selectedRatings.join(','));
+    }
     return params.toString();
-  }, [dateRange]);
+  }, [dateRange, selectedProduct, selectedMarketplaces, selectedSentiments, selectedStatuses, selectedRatings]);
 
   // Fetch analytics data
   const { data: analyticsData, isLoading } = useQuery({
@@ -52,7 +96,52 @@ export default function Analytics() {
 
   const handleClearFilters = () => {
     setDateRange({ from: undefined, to: undefined });
+    setSelectedProduct("");
+    setSelectedMarketplaces([]);
+    setSelectedSentiments([]);
+    setSelectedStatuses([]);
+    setSelectedRatings([]);
   };
+
+  const toggleMarketplace = (marketplace: Marketplace) => {
+    setSelectedMarketplaces(prev =>
+      prev.includes(marketplace)
+        ? prev.filter(m => m !== marketplace)
+        : [...prev, marketplace]
+    );
+  };
+
+  const toggleSentiment = (sentiment: Sentiment) => {
+    setSelectedSentiments(prev =>
+      prev.includes(sentiment)
+        ? prev.filter(s => s !== sentiment)
+        : [...prev, sentiment]
+    );
+  };
+
+  const toggleStatus = (status: Status) => {
+    setSelectedStatuses(prev =>
+      prev.includes(status)
+        ? prev.filter(s => s !== status)
+        : [...prev, status]
+    );
+  };
+
+  const toggleRating = (rating: number) => {
+    setSelectedRatings(prev =>
+      prev.includes(rating)
+        ? prev.filter(r => r !== rating)
+        : [...prev, rating]
+    );
+  };
+
+  const activeFilterCount = 
+    (dateRange.from || dateRange.to ? 1 : 0) +
+    (selectedProduct ? 1 : 0) +
+    selectedMarketplaces.length +
+    selectedSentiments.length +
+    selectedStatuses.length +
+    selectedRatings.length;
 
   return (
     <div className="p-6 space-y-6">
@@ -60,37 +149,150 @@ export default function Analytics() {
         <div>
           <h1 className="text-2xl font-semibold">Analytics</h1>
           <p className="text-sm text-muted-foreground">
-            Insights and trends from your marketplace reviews
+            Advanced data analysis with comprehensive filtering
           </p>
         </div>
         
-        <div className="flex items-center gap-2">
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" size="sm" data-testid="button-date-filter">
-                <Calendar className="h-4 w-4 mr-2" />
-                {dateRange.from && dateRange.to
-                  ? `${format(dateRange.from, 'MMM d')} - ${format(dateRange.to, 'MMM d, yyyy')}`
-                  : 'Filter by date'}
+        <div className="flex items-center gap-2 flex-wrap">
+          <Collapsible open={filtersOpen} onOpenChange={setFiltersOpen}>
+            <CollapsibleTrigger asChild>
+              <Button variant="outline" size="sm" data-testid="button-toggle-filters">
+                <Filter className="h-4 w-4 mr-2" />
+                Filters
+                {activeFilterCount > 0 && (
+                  <Badge variant="secondary" className="ml-2 h-5 px-1.5">
+                    {activeFilterCount}
+                  </Badge>
+                )}
               </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="end">
-              <CalendarComponent
-                mode="range"
-                selected={{ from: dateRange.from, to: dateRange.to }}
-                onSelect={(range) => setDateRange({ from: range?.from, to: range?.to })}
-                numberOfMonths={2}
-              />
-            </PopoverContent>
-          </Popover>
+            </CollapsibleTrigger>
+          </Collapsible>
           
-          {(dateRange.from || dateRange.to) && (
-            <Button variant="ghost" size="sm" onClick={handleClearFilters} data-testid="button-clear-filters">
-              Clear filters
+          {activeFilterCount > 0 && (
+            <Button variant="ghost" size="sm" onClick={handleClearFilters} data-testid="button-clear-all-filters">
+              <X className="h-4 w-4 mr-2" />
+              Clear all
             </Button>
           )}
         </div>
       </div>
+
+      <Collapsible open={filtersOpen} onOpenChange={setFiltersOpen}>
+        <CollapsibleContent>
+          <Card className="mb-6">
+            <CardContent className="p-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="space-y-2">
+                  <Label>Date Range</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" size="sm" className="w-full justify-start" data-testid="button-date-range-filter">
+                        <Calendar className="h-4 w-4 mr-2" />
+                        {dateRange.from && dateRange.to
+                          ? `${format(dateRange.from, 'MMM d')} - ${format(dateRange.to, 'MMM d, yyyy')}`
+                          : 'Select date range'}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <CalendarComponent
+                        mode="range"
+                        selected={{ from: dateRange.from, to: dateRange.to }}
+                        onSelect={(range) => setDateRange({ from: range?.from, to: range?.to })}
+                        numberOfMonths={2}
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Product</Label>
+                  <Select value={selectedProduct} onValueChange={setSelectedProduct}>
+                    <SelectTrigger data-testid="select-product-filter">
+                      <SelectValue placeholder="All products" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">All products</SelectItem>
+                      {products.map((product: any) => (
+                        <SelectItem key={`${product.platform}-${product.productId}`} value={`${product.platform}-${product.productId}`}>
+                          {product.productName} ({product.platform})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Marketplace</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {(['Amazon', 'Shopify', 'Walmart', 'Website'] as Marketplace[]).map(marketplace => (
+                      <Badge
+                        key={marketplace}
+                        variant={selectedMarketplaces.includes(marketplace) ? "default" : "outline"}
+                        className="cursor-pointer hover-elevate"
+                        onClick={() => toggleMarketplace(marketplace)}
+                        data-testid={`filter-marketplace-${marketplace.toLowerCase()}`}
+                      >
+                        {marketplace}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Sentiment</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {(['positive', 'neutral', 'negative'] as Sentiment[]).map(sentiment => (
+                      <Badge
+                        key={sentiment}
+                        variant={selectedSentiments.includes(sentiment) ? "default" : "outline"}
+                        className="cursor-pointer hover-elevate capitalize"
+                        onClick={() => toggleSentiment(sentiment)}
+                        data-testid={`filter-sentiment-${sentiment}`}
+                      >
+                        {sentiment}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Status</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {(['open', 'in_progress', 'resolved'] as Status[]).map(status => (
+                      <Badge
+                        key={status}
+                        variant={selectedStatuses.includes(status) ? "default" : "outline"}
+                        className="cursor-pointer hover-elevate capitalize"
+                        onClick={() => toggleStatus(status)}
+                        data-testid={`filter-status-${status}`}
+                      >
+                        {status.replace('_', ' ')}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Rating</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {[1, 2, 3, 4, 5].map(rating => (
+                      <Badge
+                        key={rating}
+                        variant={selectedRatings.includes(rating) ? "default" : "outline"}
+                        className="cursor-pointer hover-elevate"
+                        onClick={() => toggleRating(rating)}
+                        data-testid={`filter-rating-${rating}`}
+                      >
+                        {rating} ★
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </CollapsibleContent>
+      </Collapsible>
 
       {isLoading ? (
         <div className="flex items-center justify-center p-12">
