@@ -33,6 +33,15 @@ interface WorkflowBoardProps {
   onCardClick?: (reviewId: string) => void;
 }
 
+const getColumnColor = (columnId: string, isDraggingOver: boolean) => {
+  const baseColors = {
+    open: isDraggingOver ? "bg-red-100 dark:bg-red-950/40" : "bg-red-50 dark:bg-red-950/20",
+    in_progress: isDraggingOver ? "bg-yellow-100 dark:bg-yellow-950/40" : "bg-yellow-50 dark:bg-yellow-950/20",
+    resolved: isDraggingOver ? "bg-green-100 dark:bg-green-950/40" : "bg-green-50 dark:bg-green-950/20",
+  };
+  return baseColors[columnId as keyof typeof baseColors] || (isDraggingOver ? "bg-accent/50" : "bg-muted/30");
+};
+
 export function WorkflowBoard({ columns: initialColumns, onReviewMove, onCardClick }: WorkflowBoardProps) {
   const [columns, setColumns] = useState(initialColumns);
 
@@ -89,7 +98,7 @@ export function WorkflowBoard({ columns: initialColumns, onReviewMove, onCardCli
                   {...provided.droppableProps}
                   className={cn(
                     "flex-1 space-y-3 rounded-md p-4 min-h-[500px]",
-                    snapshot.isDraggingOver ? "bg-accent/50" : "bg-muted/30"
+                    getColumnColor(column.id, snapshot.isDraggingOver)
                   )}
                   data-testid={`column-${column.id}`}
                 >
