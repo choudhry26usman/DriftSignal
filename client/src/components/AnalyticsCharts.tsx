@@ -115,7 +115,7 @@ export function MarketplaceDistributionChart({ data }: MarketplaceDistributionCh
               cy="50%"
               labelLine={false}
               label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-              outerRadius={100}
+              outerRadius={80}
               fill="hsl(var(--chart-1))"
               dataKey="value"
             >
@@ -197,7 +197,7 @@ export function StatusDistributionChart({ data }: StatusDistributionChartProps) 
               cy="50%"
               labelLine={false}
               label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-              outerRadius={100}
+              outerRadius={80}
               fill="hsl(var(--chart-1))"
               dataKey="value"
             >
