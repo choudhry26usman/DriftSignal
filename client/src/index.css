@@ -171,7 +171,25 @@
   }
 
   body {
-    @apply font-sans antialiased bg-background text-foreground;
+    @apply font-sans antialiased text-foreground;
+    background: linear-gradient(135deg, 
+      rgba(224, 242, 254, 0.3) 0%,
+      rgba(186, 230, 253, 0.4) 25%,
+      rgba(147, 197, 253, 0.5) 50%,
+      rgba(96, 165, 250, 0.6) 100%
+    );
+    background-attachment: fixed;
+    min-height: 100vh;
+  }
+
+  .dark body {
+    background: linear-gradient(135deg, 
+      rgba(30, 58, 138, 0.2) 0%,
+      rgba(29, 78, 216, 0.3) 25%,
+      rgba(37, 99, 235, 0.4) 50%,
+      rgba(59, 130, 246, 0.5) 100%
+    );
+    background-attachment: fixed;
   }
 }
 
