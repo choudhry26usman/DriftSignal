@@ -2,16 +2,14 @@ import { useState } from "react";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { SiAmazon, SiEbay, SiShopify, SiPaypal, SiAlibabadotcom } from "react-icons/si";
+import { SiAmazon, SiShopify, SiWalmart } from "react-icons/si";
 import { Globe } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const marketplaceIcons = {
   Amazon: SiAmazon,
-  eBay: SiEbay,
   Shopify: SiShopify,
-  PayPal: SiPaypal,
-  Alibaba: SiAlibabadotcom,
+  Walmart: SiWalmart,
   Website: Globe,
 };
 
