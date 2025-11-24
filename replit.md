@@ -6,6 +6,21 @@ DriftSignal is a SaaS platform designed for centralized management of customer r
 
 ## Recent Changes (November 24, 2025)
 
+### Database Migration to PostgreSQL (Latest)
+- **Migrated** from in-memory storage to persistent PostgreSQL database
+  - Created `products` table with platform, productId, productName, and lastImported tracking
+  - Updated `reviews` schema with `externalReviewId`, `productId`, and `productName` fields
+  - Implemented DBStorage class with full CRUD operations for reviews and products
+  - Configured WebSocket support for Neon serverless database connection (`ws` package)
+- **Duplicate Prevention**: All import endpoints now check `externalReviewId` before inserting
+  - Amazon, Walmart, and file imports skip duplicate reviews automatically
+  - Import response includes `imported` and `skipped` counts
+- **Product Tracking**: 
+  - Products automatically tracked when reviews imported
+  - Last import timestamp updated on each import
+  - Review count per product calculated from database
+- **Database Status**: PostgreSQL connected successfully, all data persists across restarts
+
 ### File Import Feature & Marketplace Cleanup
 - **Implemented** CSV/JSON file import functionality with AI-powered processing
   - Backend endpoint `/api/reviews/import-file` using multer for file uploads
@@ -28,14 +43,15 @@ DriftSignal is a SaaS platform designed for centralized management of customer r
 - **UI Updates**: Added Walmart integration card to Settings page with status indicator and importer section
 - **Status**: Integration configured and ready for testing with Walmart product URLs
 
-### Amazon Reviews Integration (November 23, 2025)
+### Amazon Reviews Integration
 - **Moved** Amazon import interface from Dashboard to Settings page for better organization
-- **Built** complete AI-powered import pipeline: ASIN input → Axesso API fetch → AI analysis (sentiment/category/severity) → AI reply generation → in-memory storage → Dashboard display
+- **Built** complete AI-powered import pipeline: ASIN input → Axesso API fetch → AI analysis (sentiment/category/severity) → AI reply generation → PostgreSQL database storage → Dashboard display
 - **Fixed** Axesso API integration issues:
   - Corrected base URL to `axesso-axesso-amazon-data-service-v1.p.rapidapi.com`
   - Updated endpoint path to `/amz/amazon-lookup-product` (confirmed working)
   - API now responds correctly with proper error messages
-- **Current Status**: Import system fully functional, but Axesso free tier has very limited product coverage. Many ASINs cannot be found in their database.
+- **Updated** to use database storage with duplicate detection via externalReviewId
+- **Current Status**: Integration configured and API responding correctly
 
 ## User Preferences
 
@@ -50,7 +66,12 @@ The frontend is built with React 18 and TypeScript, using Vite for fast developm
 The backend uses Express.js with separate configurations for development (Vite middleware for HMR) and production (serving static assets). It provides RESTful APIs under the `/api` prefix for email management, AI-powered reply generation, review analysis, and integration status checks. The API design includes custom logging, JSON request/response handling, and graceful error handling.
 
 ### Data Storage Solutions
-The application uses PostgreSQL, specifically Neon serverless, via the `@neondatabase/serverless` driver. The schema, defined with Drizzle ORM, includes `users` and `reviews` tables. An abstraction layer (`IStorage`) supports both in-memory storage for development/demo and PostgreSQL for production, with migrations managed by Drizzle Kit.
+The application uses persistent PostgreSQL database storage powered by Neon serverless, accessed via the `@neondatabase/serverless` driver with WebSocket configuration. The schema, defined with Drizzle ORM, includes:
+- **`reviews` table**: Stores all imported reviews with fields for externalReviewId (duplicate detection), marketplace, productId, title, content, customerName, customerEmail, rating, sentiment, category, severity, status, createdAt, aiSuggestedReply, and verification status.
+- **`products` table**: Tracks imported products with platform, productId, productName, and lastImported timestamp.
+- **`users` table**: User authentication and profile management.
+
+An abstraction layer (`IStorage` interface, `DBStorage` implementation) provides clean separation between business logic and data persistence. The DBStorage class implements full CRUD operations for reviews and products, including duplicate detection via `checkReviewExists()` and product tracking methods. Database migrations are managed using Drizzle Kit (`npm run db:push`).
 
 ## External Dependencies
 
