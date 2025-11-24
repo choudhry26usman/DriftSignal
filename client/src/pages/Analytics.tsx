@@ -35,7 +35,7 @@ export default function Analytics() {
     from: undefined,
     to: undefined,
   });
-  const [selectedProduct, setSelectedProduct] = useState<string>("");
+  const [selectedProduct, setSelectedProduct] = useState<string>("all");
   const [selectedMarketplaces, setSelectedMarketplaces] = useState<Marketplace[]>([]);
   const [selectedSentiments, setSelectedSentiments] = useState<Sentiment[]>([]);
   const [selectedStatuses, setSelectedStatuses] = useState<Status[]>([]);
@@ -58,7 +58,7 @@ export default function Analytics() {
     if (dateRange.to) {
       params.append('endDate', dateRange.to.toISOString());
     }
-    if (selectedProduct) {
+    if (selectedProduct && selectedProduct !== 'all') {
       params.append('productId', selectedProduct);
     }
     if (selectedMarketplaces.length > 0) {
@@ -96,7 +96,7 @@ export default function Analytics() {
 
   const handleClearFilters = () => {
     setDateRange({ from: undefined, to: undefined });
-    setSelectedProduct("");
+    setSelectedProduct("all");
     setSelectedMarketplaces([]);
     setSelectedSentiments([]);
     setSelectedStatuses([]);
@@ -137,7 +137,7 @@ export default function Analytics() {
 
   const activeFilterCount = 
     (dateRange.from || dateRange.to ? 1 : 0) +
-    (selectedProduct ? 1 : 0) +
+    (selectedProduct && selectedProduct !== 'all' ? 1 : 0) +
     selectedMarketplaces.length +
     selectedSentiments.length +
     selectedStatuses.length +
@@ -211,7 +211,7 @@ export default function Analytics() {
                       <SelectValue placeholder="All products" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">All products</SelectItem>
+                      <SelectItem value="all">All products</SelectItem>
                       {products.map((product: any) => (
                         <SelectItem key={`${product.platform}-${product.productId}`} value={`${product.platform}-${product.productId}`}>
                           {product.productName} ({product.platform})
