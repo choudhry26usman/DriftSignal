@@ -107,17 +107,19 @@ export class MemStorage implements IStorage {
 export class DBStorage implements IStorage {
   // User methods
   async getUser(id: string): Promise<User | undefined> {
-    const result = await db.query.users.findFirst({
-      where: (users, { eq }) => eq(users.id, id),
-    });
-    return result;
+    const result = await db.select()
+      .from(users)
+      .where(eq(users.id, id))
+      .limit(1);
+    return result[0];
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    const result = await db.query.users.findFirst({
-      where: (users, { eq }) => eq(users.username, username),
-    });
-    return result;
+    const result = await db.select()
+      .from(users)
+      .where(eq(users.username, username))
+      .limit(1);
+    return result[0];
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
@@ -131,10 +133,11 @@ export class DBStorage implements IStorage {
   }
 
   async getReviewById(id: string): Promise<Review | undefined> {
-    const result = await db.query.reviews.findFirst({
-      where: (reviews, { eq }) => eq(reviews.id, id),
-    });
-    return result;
+    const result = await db.select()
+      .from(reviews)
+      .where(eq(reviews.id, id))
+      .limit(1);
+    return result[0];
   }
 
   async createReview(review: InsertReview): Promise<Review> {
@@ -168,13 +171,16 @@ export class DBStorage implements IStorage {
   }
 
   async getProductByIdentifier(platform: string, productId: string): Promise<Product | undefined> {
-    const result = await db.query.products.findFirst({
-      where: (products, { eq, and }) => and(
-        eq(products.platform, platform),
-        eq(products.productId, productId)
-      ),
-    });
-    return result;
+    const result = await db.select()
+      .from(products)
+      .where(
+        and(
+          eq(products.platform, platform),
+          eq(products.productId, productId)
+        )
+      )
+      .limit(1);
+    return result[0];
   }
 
   async createProduct(product: InsertProduct): Promise<Product> {

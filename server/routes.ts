@@ -5,6 +5,7 @@ import { getUncachableOutlookClient } from "./integrations/outlook";
 import { testAxessoConnection } from "./integrations/axesso";
 import { testWalmartConnection } from "./integrations/walmart";
 import { analyzeReview, generateReply } from "./ai/service";
+import { storage } from "./storage";
 import { z } from "zod";
 import multer from "multer";
 import { parse } from "csv-parse/sync";
@@ -428,10 +429,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log(`Processing ${result.reviews.length} reviews for "${productName}"...`);
       
-      // Process each review through AI
-      const processedReviews = [];
+      // Process each review through AI with duplicate detection
+      let importedCount = 0;
+      let skippedCount = 0;
+      
       for (const review of result.reviews) {
         try {
+          // Check for duplicates using review ID if available
+          const externalReviewId = review.reviewId || review.id || null;
+          if (externalReviewId) {
+            const exists = await storage.checkReviewExists(externalReviewId, "Amazon");
+            if (exists) {
+              console.log(`⊘ Skipping duplicate review: ${externalReviewId}`);
+              skippedCount++;
+              continue;
+            }
+          }
+          
           // Axesso returns: text, userName, title, rating, date
           const reviewText = review.text || '';
           const userName = review.userName || 'Anonymous';
@@ -455,9 +469,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             analysis.severity
           );
 
-          const processedReview = {
-            id: `amazon-${extractedAsin}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-            marketplace: "Amazon" as const,
+          // Save to database
+          await storage.createReview({
+            externalReviewId,
+            marketplace: "Amazon",
+            productId: extractedAsin,
             title: reviewTitle,
             content: reviewText,
             customerName: userName,
@@ -469,57 +485,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
             status: "open",
             createdAt: new Date(reviewDate),
             aiSuggestedReply: aiReply,
-            verified: true,
-            asin: extractedAsin,
-          };
+            verified: 1,
+          });
 
-          processedReviews.push(processedReview);
-          console.log(`✓ Processed review from ${userName} (${analysis.sentiment}/${analysis.severity})`);
+          importedCount++;
+          console.log(`✓ Imported review from ${userName} (${analysis.sentiment}/${analysis.severity})`);
         } catch (error) {
           console.error(`Failed to process review:`, error);
+          skippedCount++;
         }
       }
 
-      // Store in global reviews array (in-memory for now)
-      if (!global.importedReviews) {
-        global.importedReviews = [];
-      }
-      global.importedReviews.push(...processedReviews);
-
-      // Track the product
-      if (!global.trackedProducts) {
-        global.trackedProducts = [];
-      }
+      // Track the product in database
+      const existingProduct = await storage.getProductByIdentifier("Amazon", extractedAsin);
       
-      // Check if product already exists, update or add
-      const existingProductIndex = global.trackedProducts.findIndex(
-        p => p.productId === extractedAsin && p.platform === "Amazon"
-      );
-      
-      if (existingProductIndex >= 0) {
-        global.trackedProducts[existingProductIndex] = {
-          ...global.trackedProducts[existingProductIndex],
-          reviewCount: global.trackedProducts[existingProductIndex].reviewCount + processedReviews.length,
-          lastImported: new Date(),
-        };
+      if (existingProduct) {
+        await storage.updateProductLastImported(existingProduct.id);
+        console.log(`✓ Updated product tracking for "${productName}"`);
       } else {
-        global.trackedProducts.push({
-          id: `product-amazon-${extractedAsin}`,
+        await storage.createProduct({
           platform: "Amazon",
           productId: extractedAsin,
           productName,
-          reviewCount: processedReviews.length,
-          lastImported: new Date(),
         });
+        console.log(`✓ Added product to tracking: "${productName}"`);
       }
 
-      console.log(`✓ Successfully imported ${processedReviews.length} reviews for "${productName}"`);
+      console.log(`✓ Successfully imported ${importedCount} reviews for "${productName}" (${skippedCount} duplicates skipped)`);
       
       res.json({
-        imported: processedReviews.length,
+        imported: importedCount,
+        skipped: skippedCount,
         asin: extractedAsin,
         productName,
-        reviews: processedReviews
       });
     } catch (error: any) {
       console.error("Failed to import Amazon reviews:", error);
@@ -559,7 +557,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get all imported reviews
   app.get("/api/reviews/imported", async (req, res) => {
     try {
-      const reviews = global.importedReviews || [];
+      const reviews = await storage.getReviews();
       res.json({ reviews, total: reviews.length });
     } catch (error: any) {
       console.error("Failed to fetch imported reviews:", error);
@@ -570,8 +568,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get all tracked products
   app.get("/api/products/tracked", async (req, res) => {
     try {
-      const products = global.trackedProducts || [];
-      res.json({ products, total: products.length });
+      const products = await storage.getProducts();
+      
+      // Get review counts for each product
+      const productsWithCounts = await Promise.all(
+        products.map(async (product) => {
+          const reviewCount = await storage.getReviewCountForProduct(product.platform, product.productId);
+          return {
+            id: product.id,
+            platform: product.platform,
+            productId: product.productId,
+            productName: product.productName,
+            reviewCount,
+            lastImported: product.lastImported.toISOString(),
+          };
+        })
+      );
+      
+      res.json({ products: productsWithCounts, total: productsWithCounts.length });
     } catch (error: any) {
       console.error("Failed to fetch tracked products:", error);
       res.status(500).json({ error: "Failed to fetch tracked products" });
