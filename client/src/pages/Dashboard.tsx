@@ -23,7 +23,6 @@ export default function Dashboard() {
   const searchString = useSearch();
   const [selectedReview, setSelectedReview] = useState<typeof mockReviews[0] | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [expandedThreads, setExpandedThreads] = useState<Set<string>>(new Set());
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isImportProductModalOpen, setIsImportProductModalOpen] = useState(false);
   const [refreshingProductId, setRefreshingProductId] = useState<string | null>(null);
@@ -54,17 +53,6 @@ export default function Dashboard() {
     return searchParams.get('date') || "all";
   }, [searchString]);
 
-  const toggleThread = (threadId: string) => {
-    setExpandedThreads(prev => {
-      const next = new Set(prev);
-      if (next.has(threadId)) {
-        next.delete(threadId);
-      } else {
-        next.add(threadId);
-      }
-      return next;
-    });
-  };
 
 
   const { data: importedReviewsData } = useQuery<{ reviews: typeof mockReviews; total: number }>({
