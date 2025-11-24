@@ -5,6 +5,7 @@ import { StatCard } from "@/components/StatCard";
 import { ReviewCard } from "@/components/ReviewCard";
 import { ReviewDetailModal } from "@/components/ReviewDetailModal";
 import { ImportReviewsModal } from "@/components/ImportReviewsModal";
+import { ImportProductModal } from "@/components/ImportProductModal";
 import { MessageSquare, TrendingUp, Clock, CheckCircle, Search, Upload, Download, Mail, RefreshCw, Loader2, Inbox, ChevronDown, ChevronRight, Package, ShoppingCart } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useQuery } from "@tanstack/react-query";
@@ -25,6 +26,7 @@ export default function Dashboard() {
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedThreads, setExpandedThreads] = useState<Set<string>>(new Set());
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [isImportProductModalOpen, setIsImportProductModalOpen] = useState(false);
   const { toast } = useToast();
   
   const marketplaceFilter = useMemo(() => {
@@ -191,7 +193,7 @@ export default function Dashboard() {
             Centralized marketplace review and complaint management
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <Button 
             variant="outline" 
             onClick={handleSyncEmails}
@@ -202,12 +204,20 @@ export default function Dashboard() {
             Sync Emails
           </Button>
           <Button 
+            variant="default" 
+            onClick={() => setIsImportProductModalOpen(true)}
+            data-testid="button-import-product"
+          >
+            <ShoppingCart className="h-4 w-4 mr-2" />
+            Import Product
+          </Button>
+          <Button 
             variant="outline" 
             onClick={() => setIsImportModalOpen(true)}
             data-testid="button-import-reviews"
           >
             <Upload className="h-4 w-4 mr-2" />
-            Import Reviews
+            Import File
           </Button>
           <Button 
             variant="outline"
@@ -464,6 +474,11 @@ export default function Dashboard() {
       <ImportReviewsModal
         open={isImportModalOpen}
         onOpenChange={setIsImportModalOpen}
+      />
+
+      <ImportProductModal
+        open={isImportProductModalOpen}
+        onOpenChange={setIsImportProductModalOpen}
       />
     </div>
   );
