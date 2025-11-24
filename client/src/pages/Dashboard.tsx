@@ -8,7 +8,7 @@ import { ImportReviewsModal } from "@/components/ImportReviewsModal";
 import { ImportProductModal } from "@/components/ImportProductModal";
 import { MessageSquare, TrendingUp, Clock, CheckCircle, Search, Upload, Download, Mail, RefreshCw, Loader2, Inbox, ChevronDown, ChevronRight, Package, ShoppingCart } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation, useSearch } from "wouter";
 import type { EmailListResponse, Email, EmailThread } from "@shared/types";
@@ -16,6 +16,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { SiAmazon, SiShopify, SiWalmart } from "react-icons/si";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 
 // Mock reviews removed - now using only real imported reviews from Amazon/other sources
 const mockReviews: any[] = [];
@@ -27,6 +28,7 @@ export default function Dashboard() {
   const [expandedThreads, setExpandedThreads] = useState<Set<string>>(new Set());
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isImportProductModalOpen, setIsImportProductModalOpen] = useState(false);
+  const [refreshingProductId, setRefreshingProductId] = useState<string | null>(null);
   const { toast } = useToast();
   
   const marketplaceFilter = useMemo(() => {
@@ -88,6 +90,40 @@ export default function Dashboard() {
   }>({
     queryKey: ["/api/products/tracked"],
   });
+
+  const refreshProductMutation = useMutation({
+    mutationFn: async ({ productId, platform }: { productId: string; platform: string }) => {
+      const response = await apiRequest("/api/products/refresh", {
+        method: "POST",
+        body: JSON.stringify({ productId, platform }),
+        headers: { "Content-Type": "application/json" },
+      });
+      return response;
+    },
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/products/tracked"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/reviews/imported"] });
+      setRefreshingProductId(null);
+      
+      toast({
+        title: "Reviews Refreshed",
+        description: data.message || `Successfully refreshed reviews for product`,
+      });
+    },
+    onError: (error: any, variables) => {
+      setRefreshingProductId(null);
+      toast({
+        title: "Refresh Failed",
+        description: error.message || "Could not refresh reviews. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleRefreshProduct = (productId: string, platform: string) => {
+    setRefreshingProductId(productId);
+    refreshProductMutation.mutate({ productId, platform });
+  };
 
   const allReviews = useMemo(() => {
     const imported = importedReviewsData?.reviews || [];
@@ -269,13 +305,28 @@ export default function Dashboard() {
                         <h4 className="text-sm font-medium line-clamp-2 mb-2" data-testid={`text-product-name-${product.productId}`}>
                           {product.productName}
                         </h4>
-                        <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                          <span data-testid={`text-review-count-${product.productId}`}>
-                            {product.reviewCount} {product.reviewCount === 1 ? 'review' : 'reviews'}
-                          </span>
-                          <span>
-                            Last: {new Date(product.lastImported).toLocaleDateString()}
-                          </span>
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex flex-col gap-1 text-xs text-muted-foreground">
+                            <span data-testid={`text-review-count-${product.productId}`}>
+                              {product.reviewCount} {product.reviewCount === 1 ? 'review' : 'reviews'}
+                            </span>
+                            <span>
+                              Last: {new Date(product.lastImported).toLocaleDateString()}
+                            </span>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleRefreshProduct(product.productId, product.platform)}
+                            disabled={refreshingProductId === product.productId}
+                            data-testid={`button-refresh-${product.productId}`}
+                          >
+                            {refreshingProductId === product.productId ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <RefreshCw className="h-4 w-4" />
+                            )}
+                          </Button>
                         </div>
                       </div>
                     </div>
