@@ -1,17 +1,14 @@
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Star, ThumbsUp, ThumbsDown, Minus, MessageSquare } from "lucide-react";
-import { SiAmazon, SiEbay, SiShopify, SiPaypal, SiAlibabadotcom } from "react-icons/si";
-import { Globe } from "lucide-react";
+import { Star, ThumbsUp, ThumbsDown, Minus, MessageSquare, Globe } from "lucide-react";
+import { SiAmazon, SiShopify, SiWalmart } from "react-icons/si";
 import { cn } from "@/lib/utils";
 
 const marketplaceIcons = {
   Amazon: SiAmazon,
-  eBay: SiEbay,
   Shopify: SiShopify,
-  PayPal: SiPaypal,
-  Alibaba: SiAlibabadotcom,
+  Walmart: SiWalmart,
   Website: Globe,
 };
 
