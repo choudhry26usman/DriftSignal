@@ -2,158 +2,7 @@
 
 ## Overview
 
-DriftSignal is a SaaS platform designed for centralized management of customer reviews and complaints across various marketplace platforms (Amazon, Shopify, Walmart, and Mailbox for email-imported reviews). It offers AI-powered analysis, sentiment tracking, and workflow management for customer feedback. The platform features a premium, enterprise-grade interface with a glass-morphic design inspired by Linear, Notion, and Asana. Its core capabilities include unified multi-marketplace review aggregation, AI-powered sentiment analysis and categorization using Grok 4.1 Fast LLM, Kanban-style workflow management, analytics for review trends, email integration for customer communication, CSV/JSON file import, and theme switching.
-
-## Recent Changes (November 24, 2025)
-
-### Mailbox Marketplace for Outlook Emails (Latest)
-- **Renamed** marketplace from "Website" to "Mailbox" for Outlook email imports
-  - Updated shared/types.ts Review interface to use "Mailbox" instead of "Website"
-  - Updated server routes to set marketplace='mailbox' for email-imported reviews
-  - Updated all frontend components (ReviewCard, WorkflowBoard, ReviewDetailModal, app-sidebar, Analytics, ImportReviewsModal)
-  - Changed icon from Globe to Mail (lucide-react) for better semantic representation
-  - Mailbox marketplace color: #0078D4 (Microsoft blue) for visual consistency with Outlook
-- **Benefit**: Clear distinction between reviews from email inbox vs. website forms
-- **Filtering**: Users can now filter specifically for email-imported reviews using "Mailbox" filter
-- **Status**: Complete migration from Website to Mailbox terminology
-
-### Outlook-Only Email Architecture
-- **Migrated** from dual email system (AgentMail + Outlook) to single Outlook-only architecture
-  - Removed AgentMail integration completely from codebase
-  - Removed email inbox UI display from Dashboard (emails processed in background)
-  - Cleaned up shared/types.ts by removing Email, EmailThread, and EmailListResponse interfaces
-  - Removed AgentMail integration card from Settings page
-  - Updated ConnectionStatusResponse interface to only include Outlook
-- **Automatic Email Monitoring**: AI-powered email classification detects reviews/complaints from Outlook inbox
-  - `/api/emails/sync` endpoint fetches emails from Outlook, classifies with AI, auto-imports detected reviews
-  - Dashboard "Sync Emails" button triggers AI classification and automatic review import
-  - Reviews imported with marketplace='mailbox' for easy filtering
-- **Status**: Outlook (drift_signal@outlook.com) serves as single inbox for both receiving and sending emails
-
-### Color Scheme Update
-- **Changed primary color** from purple to blue to match gradient background theme
-  - Old: `250 95% 63%` (Purple)
-  - New: `210 100% 56%` (Blue - vibrant sky blue)
-- **Updated all primary elements** throughout the app:
-  - Primary buttons (Import Product) now use blue instead of purple
-  - Focus rings and interactive states show blue highlights
-  - Badges with primary variant display blue
-  - Charts and visualizations use blue as primary color
-  - Sidebar active states use blue accent
-- **Cohesive design**: Blue buttons now harmonize with blue gradient background
-- **Status**: Complete color scheme transformation from purple to blue theme
-
-### Dashboard Metrics Enhancement
-- **Implemented** dynamic metrics calculation from actual database data
-  - Total Reviews: Calculated from all imported reviews in database
-  - Avg. Rating: Computed as average of all review ratings with 1 decimal precision
-  - Pending: Counts reviews with "open" or "in_progress" status (unresolved)
-  - Resolved: Counts reviews with "resolved" status
-- **Added** defensive rating parsing to prevent NaN errors
-  - Uses Number() conversion with isNaN check for robustness
-  - Handles potential string ratings gracefully
-- **Fixed** status filtering to match actual schema values
-  - Corrected pending filter from incorrect "new"/"pending" to actual "open"/"in_progress" statuses
-  - Now accurately reflects database schema: "open" (default), "in_progress", "resolved"
-- **Verified** metrics accuracy via end-to-end testing
-  - Test confirmed: Pending=19, Resolved=1, Total=20 (all calculations correct)
-  - Metrics update in real-time as reviews are imported or status changes
-- **Status**: Dashboard metrics fully integrated with live database data
-
-### UI/UX Refinements & Code Cleanup
-- **Added** blue gradient background theme
-  - Light mode: Very light sky blue (top) transitioning to deeper blue (bottom-left)
-  - Dark mode: Darker blue tones with same gradient direction
-  - Gradient uses 30-60% opacity for premium glass-morphic aesthetic
-  - Fixed background attachment for consistent visual experience while scrolling
-- **Simplified** Settings page by removing duplicate importers
-  - Removed redundant Amazon, Shopify, and Walmart import sections from Settings
-  - All product imports now consolidated in Dashboard's "Import Product" modal
-  - Settings page now focuses solely on integration status and configuration
-  - Cleaned up unused imports and mutations (Input, Package, Download, useMutation)
-- **Fixed** AgentMail integration display
-  - Corrected client initialization from `environment` to `baseUrl`
-  - Fixed status check to properly parse `inboxesResponse.inboxes` structure
-  - AgentMail now shows as "Connected" in Settings page
-
-### Code Optimization & Error Handling Hardening
-- **Removed** 12 unused/duplicate files for cleaner codebase
-  - Deleted entire `client/src/components/examples/` directory (11 duplicate files)
-  - Deleted unused `AmazonReviewsPanel.tsx` component
-- **Hardened** error handling across all API integrations
-  - Backend: Regex-based Axesso error parsing with specific HTTP status codes (404, 403, 429)
-  - Frontend: Content-Type-aware response parsing in all import mutations
-  - Error messages now properly propagate from backend to frontend toast notifications
-  - Graceful handling of both JSON and non-JSON error responses
-- **Enhanced** Analytics with comprehensive filtering
-  - Added Rating Distribution chart
-  - Added Status Distribution chart
-  - Implemented 6 filter types: date range, product, marketplace, sentiment, status, rating
-  - Collapsible filter panel for better UX
-- **Fixed** SelectItem validation errors by replacing empty string values with "all" constant
-- **Tested** end-to-end functionality with Playwright
-  - All pages (Dashboard, Analytics, Workflow, Settings) verified working
-  - All UI components present and interactive
-  - No critical bugs found
-
-### Product Refresh Feature
-- **Added** refresh button to each tracked product on Dashboard
-  - Clicking refresh fetches the latest reviews from marketplace API
-  - Uses duplicate detection to skip reviews already in database
-  - Shows loading spinner during refresh operation
-  - Updates last imported timestamp automatically
-  - Displays toast notification with import results
-- **Backend endpoint** `/api/products/refresh` handles re-importing for Amazon and Walmart
-  - Accepts productId and platform as parameters
-  - Returns `imported` and `skipped` counts
-  - Invalidates product and review caches after successful import
-
-### Database Migration to PostgreSQL
-- **Migrated** from in-memory storage to persistent PostgreSQL database
-  - Created `products` table with platform, productId, productName, and lastImported tracking
-  - Updated `reviews` schema with `externalReviewId`, `productId`, and `productName` fields
-  - Implemented DBStorage class with full CRUD operations for reviews and products
-  - Configured WebSocket support for Neon serverless database connection (`ws` package)
-- **Duplicate Prevention**: All import endpoints now check `externalReviewId` before inserting
-  - Amazon, Walmart, and file imports skip duplicate reviews automatically
-  - Import response includes `imported` and `skipped` counts
-- **Product Tracking**: 
-  - Products automatically tracked when reviews imported
-  - Last import timestamp updated on each import
-  - Review count per product calculated from database
-- **Database Status**: PostgreSQL connected successfully, all data persists across restarts
-
-### File Import Feature & Marketplace Cleanup
-- **Implemented** CSV/JSON file import functionality with AI-powered processing
-  - Backend endpoint `/api/reviews/import-file` using multer for file uploads
-  - Supports CSV and JSON file formats (up to 10MB)
-  - Automatically parses reviews and processes through AI for sentiment/category/severity analysis
-  - Generates AI-suggested replies for each imported review
-  - Template download feature for proper CSV format
-- **Removed** non-functional marketplaces (eBay, Alibaba, PayPal) from the platform
-  - Updated sidebar to only show: Amazon, Shopify, Walmart, Website
-  - Updated import modal dropdown to match active marketplaces
-  - Updated global type definitions to reflect active platforms only
-- **Added** Export Data functionality - downloads filtered reviews as CSV
-- **Added** platform icons (Amazon, Shopify, Walmart) to product tracking section
-
-### Walmart Reviews Integration
-- **Built** Walmart integration using Walmart API v2 via RapidAPI (walmart2.p.rapidapi.com)
-- **Added** RAPIDAPI_KEY secret for Walmart API authentication
-- **Implemented** product URL parsing to extract product IDs
-- **Created** complete integration flow: URL input → RapidAPI search → AI analysis → Dashboard display
-- **UI Updates**: Added Walmart integration card to Settings page with status indicator and importer section
-- **Status**: Integration configured and ready for testing with Walmart product URLs
-
-### Amazon Reviews Integration
-- **Moved** Amazon import interface from Dashboard to Settings page for better organization
-- **Built** complete AI-powered import pipeline: ASIN input → Axesso API fetch → AI analysis (sentiment/category/severity) → AI reply generation → PostgreSQL database storage → Dashboard display
-- **Fixed** Axesso API integration issues:
-  - Corrected base URL to `axesso-axesso-amazon-data-service-v1.p.rapidapi.com`
-  - Updated endpoint path to `/amz/amazon-lookup-product` (confirmed working)
-  - API now responds correctly with proper error messages
-- **Updated** to use database storage with duplicate detection via externalReviewId
-- **Current Status**: Integration configured and API responding correctly
+DriftSignal is a SaaS platform for centralized management of customer reviews and complaints across various marketplace platforms (Amazon, Shopify, Walmart, and Mailbox for email-imported reviews). It offers AI-powered analysis, sentiment tracking, and workflow management for customer feedback. The platform features a premium, enterprise-grade interface with a glass-morphic design, unified multi-marketplace review aggregation, AI-powered sentiment analysis and categorization using Grok 4.1 Fast LLM, Kanban-style workflow management, analytics for review trends, email integration for customer communication, CSV/JSON file import, and theme switching.
 
 ## User Preferences
 
@@ -161,42 +10,42 @@ Preferred communication style: Simple, everyday language.
 
 ## System Architecture
 
-### Frontend Architecture
-The frontend is built with React 18 and TypeScript, using Vite for fast development and builds. Client-side routing is handled by Wouter, and TanStack Query (React Query) manages server state and API data fetching. The UI is constructed with Shadcn/ui components, based on Radix UI primitives, styled using Tailwind CSS to achieve a glass-morphic aesthetic with custom design tokens. State management primarily uses React Query for server state and React Context for theme management. Key UI patterns include a filterable dashboard with review cards, a drag-and-drop Kanban board using `@hello-pangea/dnd`, modal-based detail views, and chart visualizations with Recharts.
+### UI/UX Decisions
+The frontend is built with React 18, TypeScript, and Vite. It features a glass-morphic design inspired by Linear, Notion, and Asana, utilizing Shadcn/ui components (Radix UI primitives) and Tailwind CSS. The color scheme uses a vibrant blue as the primary color with a blue gradient background. Key UI patterns include a filterable dashboard with review cards, a drag-and-drop Kanban board, modal-based detail views, and Recharts for visualizations.
 
-### Backend Architecture
-The backend uses Express.js with separate configurations for development (Vite middleware for HMR) and production (serving static assets). It provides RESTful APIs under the `/api` prefix for email management, AI-powered reply generation, review analysis, and integration status checks. The API design includes custom logging, JSON request/response handling, and graceful error handling.
+### Technical Implementations
+The frontend uses Wouter for routing and TanStack Query for server state management. The backend is an Express.js application providing RESTful APIs for email management, AI reply generation, review analysis, and integration status checks. It includes custom logging, JSON handling, and robust error handling. Product refresh functionality allows fetching the latest reviews with duplicate detection. CSV/JSON file import supports AI-powered processing for sentiment, category, severity analysis, and AI-suggested replies.
 
-### Data Storage Solutions
-The application uses persistent PostgreSQL database storage powered by Neon serverless, accessed via the `@neondatabase/serverless` driver with WebSocket configuration. The schema, defined with Drizzle ORM, includes:
-- **`reviews` table**: Stores all imported reviews with fields for externalReviewId (duplicate detection), marketplace, productId, title, content, customerName, customerEmail, rating, sentiment, category, severity, status, createdAt, aiSuggestedReply, and verification status.
-- **`products` table**: Tracks imported products with platform, productId, productName, and lastImported timestamp.
-- **`users` table**: User authentication and profile management.
+### Feature Specifications
+- **Multi-marketplace Integration**: Supports Amazon, Shopify, Walmart, and Mailbox (for Outlook email imports).
+- **AI-Powered Analysis**: Sentiment, category, and severity analysis of reviews, along with AI-suggested replies using Grok 4.1 Fast LLM.
+- **Workflow Management**: Kanban-style board for managing review statuses (open, in_progress, resolved).
+- **Analytics**: Dashboard metrics, rating distribution, and status distribution charts with comprehensive filtering (date range, product, marketplace, sentiment, status, rating).
+- **Email Integration**: Outlook-only architecture for automatic email monitoring, classification, and review import, as well as sending customer replies.
+- **Data Import/Export**: CSV/JSON file import with AI processing; export filtered reviews as CSV.
+- **Product Tracking**: Automatically tracks imported products, updates last import timestamps, and prevents duplicate reviews.
 
-An abstraction layer (`IStorage` interface, `DBStorage` implementation) provides clean separation between business logic and data persistence. The DBStorage class implements full CRUD operations for reviews and products, including duplicate detection via `checkReviewExists()` and product tracking methods. Database migrations are managed using Drizzle Kit (`npm run db:push`).
+### System Design Choices
+- **Data Storage**: Persistent PostgreSQL database via Neon serverless, using Drizzle ORM for schema definition (`reviews`, `products`, `users` tables).
+- **Abstraction Layer**: `DBStorage` class implements `IStorage` for CRUD operations, ensuring separation of concerns.
+- **Error Handling**: Hardened error handling across all API integrations with proper message propagation.
+- **Code Optimization**: Cleaned codebase by removing unused files and consolidating import sections.
 
 ## External Dependencies
 
 ### Third-Party APIs
-- **AgentMail API**: Used for email retrieval and management.
-- **Microsoft Graph API (Outlook)**: Integrated for email sending functionalities.
-- **Axesso Amazon Data Service API**: Utilized for fetching Amazon product reviews, product details, and offers via RapidAPI.
-  - **Status**: Integration configured and API responding correctly
+- **Microsoft Graph API (Outlook)**: For email synchronization and sending.
+- **Axesso Amazon Data Service API**: Fetches Amazon product reviews and details via RapidAPI.
   - **Base URL**: `axesso-axesso-amazon-data-service-v1.p.rapidapi.com`
-  - **Endpoint**: `/amz/amazon-lookup-product` (confirmed working)
-  - **Known Limitation**: Free tier (BASIC plan - 50 requests/month) has limited product coverage. Many ASINs return "product not found" errors, likely due to Axesso's product indexing limitations or regional availability.
-  - **Subscription Required**: User subscribed to RapidAPI free tier via api.rapidapi.com
-- **SerpApi (Walmart)**: Used for fetching Walmart product reviews and details.
-  - **Status**: Integration configured with SERPAPI_KEY
+  - **Endpoint**: `/amz/amazon-lookup-product`
+- **SerpApi (Walmart)**: Fetches Walmart product reviews and details.
   - **Base URL**: `serpapi.com`
-  - **Endpoints**: `/search.json?engine=walmart_product` for product data, `/search.json?engine=walmart_product_reviews` for reviews
-  - **Authentication**: Uses SERPAPI_KEY secret
-  - **Migration**: Replaced RapidAPI walmart2 (deprecated/unreliable) with SerpApi for better uptime and reliability
-- **OpenRouter + Grok 4.1 Fast**: Provides AI capabilities for generating customer service replies and analyzing review sentiment, severity, and category.
+  - **Endpoints**: `/search.json?engine=walmart_product`, `/search.json?engine=walmart_product_reviews`
+- **OpenRouter + Grok 4.1 Fast**: Provides AI capabilities for review analysis and reply generation.
 
 ### Replit Platform Integration
-- **Replit Connectors**: Used for secure management of API keys and credentials, including `AXESSO_API_KEY`, `RAPIDAPI_KEY`, `AI_INTEGRATIONS_OPENROUTER_API_KEY`, and credentials for AgentMail and Outlook.
-- **Environment Variables**: Leverages Replit's environment variables for configuration.
+- **Replit Connectors**: Used for secure management of API keys and credentials (e.g., `AXESSO_API_KEY`, `RAPIDAPI_KEY`, `AI_INTEGRATIONS_OPENROUTER_API_KEY`).
+- **Environment Variables**: For configuration.
 
 ### Database Provider
-- **Neon PostgreSQL**: Serverless PostgreSQL database used for production data storage.
+- **Neon PostgreSQL**: Serverless PostgreSQL for production data storage.
