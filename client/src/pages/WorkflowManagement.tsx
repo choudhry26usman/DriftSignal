@@ -34,6 +34,8 @@ export default function WorkflowManagement() {
           title: r.title,
           severity: r.severity,
           category: r.category,
+          rating: r.rating,
+          sentiment: r.sentiment,
         })),
       },
       {
@@ -45,6 +47,8 @@ export default function WorkflowManagement() {
           title: r.title,
           severity: r.severity,
           category: r.category,
+          rating: r.rating,
+          sentiment: r.sentiment,
         })),
       },
       {
@@ -56,6 +60,8 @@ export default function WorkflowManagement() {
           title: r.title,
           severity: r.severity,
           category: r.category,
+          rating: r.rating,
+          sentiment: r.sentiment,
         })),
       },
     ];

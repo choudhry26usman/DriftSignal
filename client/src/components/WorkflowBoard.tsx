@@ -3,7 +3,7 @@ import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { SiAmazon, SiShopify, SiWalmart } from "react-icons/si";
-import { Globe } from "lucide-react";
+import { Globe, Star, ThumbsUp, ThumbsDown, Minus } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const marketplaceIcons = {
@@ -13,12 +13,20 @@ const marketplaceIcons = {
   Website: Globe,
 };
 
+const sentimentConfig = {
+  positive: { icon: ThumbsUp, color: "text-green-600 dark:text-green-400" },
+  negative: { icon: ThumbsDown, color: "text-red-600 dark:text-red-400" },
+  neutral: { icon: Minus, color: "text-muted-foreground" },
+};
+
 export interface WorkflowReview {
   id: string;
   marketplace: keyof typeof marketplaceIcons;
   title: string;
   severity: string;
   category: string;
+  rating?: number;
+  sentiment?: keyof typeof sentimentConfig;
 }
 
 export interface WorkflowColumn {
@@ -106,41 +114,57 @@ export function WorkflowBoard({ columns: initialColumns, onReviewMove, onCardCli
                     const MarketplaceIcon = marketplaceIcons[review.marketplace];
                     return (
                       <Draggable key={review.id} draggableId={review.id} index={index}>
-                        {(provided, snapshot) => (
-                          <Card
-                            ref={provided.innerRef}
-                            {...provided.draggableProps}
-                            {...provided.dragHandleProps}
-                            onClick={() => onCardClick?.(review.id)}
-                            className={cn(
-                              "cursor-grab active:cursor-grabbing hover-elevate",
-                              snapshot.isDragging && "shadow-lg"
-                            )}
-                            data-testid={`workflow-card-${review.id}`}
-                          >
-                            <CardHeader className="pb-3">
-                              <div className="flex items-center gap-2">
-                                <MarketplaceIcon className="h-4 w-4" />
-                                <Badge variant="outline" className="text-xs">
-                                  {review.marketplace}
-                                </Badge>
-                              </div>
-                            </CardHeader>
-                            <CardContent className="space-y-2">
-                              <p className="text-sm font-medium line-clamp-2">
-                                {review.title}
-                              </p>
-                              <div className="flex gap-2">
-                                <Badge variant="secondary" className="text-xs">
-                                  {review.category}
-                                </Badge>
-                                <Badge variant="outline" className="text-xs">
-                                  {review.severity}
-                                </Badge>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        )}
+                        {(provided, snapshot) => {
+                          const SentimentIcon = review.sentiment ? sentimentConfig[review.sentiment].icon : null;
+                          const sentimentColor = review.sentiment ? sentimentConfig[review.sentiment].color : "";
+                          
+                          return (
+                            <Card
+                              ref={provided.innerRef}
+                              {...provided.draggableProps}
+                              {...provided.dragHandleProps}
+                              onClick={() => onCardClick?.(review.id)}
+                              className={cn(
+                                "cursor-grab active:cursor-grabbing hover-elevate",
+                                snapshot.isDragging && "shadow-lg"
+                              )}
+                              data-testid={`workflow-card-${review.id}`}
+                            >
+                              <CardHeader className="pb-2 space-y-0">
+                                <div className="flex items-center justify-between gap-2">
+                                  <div className="flex items-center gap-1.5">
+                                    <MarketplaceIcon className="h-3.5 w-3.5" />
+                                    <span className="text-xs text-muted-foreground">{review.marketplace}</span>
+                                  </div>
+                                  <div className="flex items-center gap-1.5">
+                                    {review.rating !== undefined && (
+                                      <div className="flex items-center gap-0.5">
+                                        <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                                        <span className="text-xs font-medium">{review.rating}</span>
+                                      </div>
+                                    )}
+                                    {SentimentIcon && (
+                                      <SentimentIcon className={cn("h-3.5 w-3.5", sentimentColor)} />
+                                    )}
+                                  </div>
+                                </div>
+                              </CardHeader>
+                              <CardContent className="space-y-2">
+                                <p className="text-xs font-medium line-clamp-2 leading-relaxed">
+                                  {review.title}
+                                </p>
+                                <div className="flex gap-1.5 flex-wrap">
+                                  <Badge variant="secondary" className="text-xs px-1.5 py-0">
+                                    {review.category}
+                                  </Badge>
+                                  <Badge variant="outline" className="text-xs px-1.5 py-0">
+                                    {review.severity}
+                                  </Badge>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          );
+                        }}
                       </Draggable>
                     );
                   })}
