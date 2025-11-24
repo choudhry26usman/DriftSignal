@@ -116,10 +116,8 @@ export function ImportReviewsModal({ open, onOpenChange }: ImportReviewsModalPro
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="Amazon">Amazon</SelectItem>
-                <SelectItem value="eBay">eBay</SelectItem>
                 <SelectItem value="Shopify">Shopify</SelectItem>
-                <SelectItem value="PayPal">PayPal</SelectItem>
-                <SelectItem value="Alibaba">Alibaba</SelectItem>
+                <SelectItem value="Walmart">Walmart</SelectItem>
                 <SelectItem value="Website">Website</SelectItem>
               </SelectContent>
             </Select>
