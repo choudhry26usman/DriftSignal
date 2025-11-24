@@ -86,8 +86,8 @@ export async function fetchWalmartProduct(productUrl: string): Promise<WalmartPr
   }
 
   try {
-    // Try to search for the product using the product ID
-    const searchUrl = `https://${WALMART_HOST}/search?query=${productId}`;
+    // Use searchV2 endpoint (search is deprecated)
+    const searchUrl = `https://${WALMART_HOST}/searchV2?query=${productId}`;
     
     console.log('[Walmart] Fetching product with ID:', productId);
     const response = await fetch(searchUrl, {
@@ -176,8 +176,8 @@ export async function testWalmartConnection(): Promise<{ success: boolean; messa
   }
 
   try {
-    // Test with a simple search query
-    const testUrl = `https://${WALMART_HOST}/search?query=xbox`;
+    // Test with a simple search query (using searchV2)
+    const testUrl = `https://${WALMART_HOST}/searchV2?query=xbox`;
     
     const response = await fetch(testUrl, {
       method: 'GET',
