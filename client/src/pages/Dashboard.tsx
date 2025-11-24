@@ -265,7 +265,7 @@ export default function Dashboard() {
         </div>
         <div className="flex gap-2 flex-wrap">
           <Button 
-            variant="outline" 
+            variant="default" 
             onClick={handleSyncEmails}
             disabled={isFetchingEmails}
             data-testid="button-sync-emails"
@@ -282,7 +282,7 @@ export default function Dashboard() {
             Import Product
           </Button>
           <Button 
-            variant="outline" 
+            variant="default" 
             onClick={() => setIsImportModalOpen(true)}
             data-testid="button-import-reviews"
           >
@@ -290,7 +290,7 @@ export default function Dashboard() {
             Import File
           </Button>
           <Button 
-            variant="outline"
+            variant="default"
             onClick={handleExportData}
             data-testid="button-export-data"
           >
