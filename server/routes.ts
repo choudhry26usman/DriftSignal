@@ -625,20 +625,70 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get analytics data
   app.get("/api/analytics", async (req, res) => {
     try {
-      const { startDate, endDate } = req.query;
+      const { 
+        startDate, 
+        endDate, 
+        productId, 
+        marketplaces, 
+        sentiments, 
+        statuses, 
+        ratings 
+      } = req.query;
       
       // Get all reviews
       const allReviews = await storage.getReviews();
       
-      // Filter by date range if provided
+      // Apply filters
       let filteredReviews = allReviews;
+
+      // Filter by date range
       if (startDate && endDate) {
         const start = new Date(startDate as string);
         const end = new Date(endDate as string);
-        filteredReviews = allReviews.filter(r => {
+        filteredReviews = filteredReviews.filter(r => {
           const reviewDate = new Date(r.createdAt);
           return reviewDate >= start && reviewDate <= end;
         });
+      }
+
+      // Filter by product
+      if (productId) {
+        const [platform, prodId] = (productId as string).split('-');
+        filteredReviews = filteredReviews.filter(r => 
+          r.marketplace === platform && r.productId === prodId
+        );
+      }
+
+      // Filter by marketplaces
+      if (marketplaces) {
+        const marketplaceList = (marketplaces as string).split(',');
+        filteredReviews = filteredReviews.filter(r => 
+          marketplaceList.includes(r.marketplace)
+        );
+      }
+
+      // Filter by sentiments
+      if (sentiments) {
+        const sentimentList = (sentiments as string).split(',');
+        filteredReviews = filteredReviews.filter(r => 
+          sentimentList.includes(r.sentiment)
+        );
+      }
+
+      // Filter by statuses
+      if (statuses) {
+        const statusList = (statuses as string).split(',');
+        filteredReviews = filteredReviews.filter(r => 
+          statusList.includes(r.status)
+        );
+      }
+
+      // Filter by ratings
+      if (ratings) {
+        const ratingList = (ratings as string).split(',').map(Number);
+        filteredReviews = filteredReviews.filter(r => 
+          r.rating && ratingList.includes(Math.floor(r.rating))
+        );
       }
 
       // Calculate sentiment distribution

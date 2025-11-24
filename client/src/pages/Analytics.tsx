@@ -43,7 +43,7 @@ export default function Analytics() {
   const [filtersOpen, setFiltersOpen] = useState(false);
 
   // Fetch tracked products
-  const { data: productsData } = useQuery({
+  const { data: productsData } = useQuery<{ products: any[] }>({
     queryKey: ['/api/products/tracked'],
   });
 
