@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ShoppingCart, Loader2 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
@@ -19,12 +19,20 @@ import { SiAmazon, SiShopify, SiWalmart } from "react-icons/si";
 interface ImportProductModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  preselectedMarketplace?: string;
 }
 
-export function ImportProductModal({ open, onOpenChange }: ImportProductModalProps) {
+export function ImportProductModal({ open, onOpenChange, preselectedMarketplace }: ImportProductModalProps) {
   const [productUrl, setProductUrl] = useState("");
-  const [marketplace, setMarketplace] = useState<string>("");
+  const [marketplace, setMarketplace] = useState<string>(preselectedMarketplace || "");
   const { toast } = useToast();
+
+  // Update marketplace when preselectedMarketplace changes
+  useEffect(() => {
+    if (preselectedMarketplace) {
+      setMarketplace(preselectedMarketplace);
+    }
+  }, [preselectedMarketplace]);
 
   const importMutation = useMutation({
     mutationFn: async ({ url, marketplace }: { url: string; marketplace: string }) => {
