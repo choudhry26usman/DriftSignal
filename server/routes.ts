@@ -207,7 +207,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (classification.isReviewOrComplaint && classification.confidence > 50) {
           // Check for duplicates using email ID
           const externalReviewId = `outlook-${msg.id}`;
-          const existingReview = await storage.checkReviewExists(externalReviewId, 'website');
+          const existingReview = await storage.checkReviewExists(externalReviewId, 'Mailbox');
           
           if (existingReview) {
             console.log(`Skipping duplicate review: ${subject}`);
@@ -230,7 +230,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Import as review
           const newReview = await storage.createReview({
             externalReviewId,
-            marketplace: 'mailbox',
+            marketplace: 'Mailbox',
             productId: 'email-review',
             title: subject,
             content: emailBody.substring(0, 5000), // Limit content length
