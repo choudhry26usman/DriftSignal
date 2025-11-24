@@ -6,7 +6,20 @@ DriftSignal is a SaaS platform designed for centralized management of customer r
 
 ## Recent Changes (November 24, 2025)
 
-### Dashboard Metrics Enhancement (Latest)
+### Color Scheme Update (Latest)
+- **Changed primary color** from purple to blue to match gradient background theme
+  - Old: `250 95% 63%` (Purple)
+  - New: `210 100% 56%` (Blue - vibrant sky blue)
+- **Updated all primary elements** throughout the app:
+  - Primary buttons (Import Product) now use blue instead of purple
+  - Focus rings and interactive states show blue highlights
+  - Badges with primary variant display blue
+  - Charts and visualizations use blue as primary color
+  - Sidebar active states use blue accent
+- **Cohesive design**: Blue buttons now harmonize with blue gradient background
+- **Status**: Complete color scheme transformation from purple to blue theme
+
+### Dashboard Metrics Enhancement
 - **Implemented** dynamic metrics calculation from actual database data
   - Total Reviews: Calculated from all imported reviews in database
   - Avg. Rating: Computed as average of all review ratings with 1 decimal precision

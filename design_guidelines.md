@@ -126,12 +126,14 @@
 - Validation: Inline messages with icon, subtle color indication
 
 ### Buttons
-- Primary: Gradient background (deep blue to purple), font-semibold, px-6 py-3 rounded-lg
+- Primary: Blue background (hsl(210 100% 56%)), font-semibold, px-6 py-3 rounded-lg
 - Secondary: Glass border style, hover brightens background
 - Ghost: Transparent with hover glass effect
 - Icon buttons: p-2.5 rounded-lg glass background
 - Disabled: Reduced opacity, no interaction
 - All buttons: Smooth transform on hover (scale-[1.02]), shadow enhancement
+
+**Color Scheme**: Primary blue (210° hue) matches the gradient background for cohesive branding.
 
 ### Badges & Pills
 - Small glass pills: px-3 py-1 text-xs font-medium rounded-full backdrop-blur
