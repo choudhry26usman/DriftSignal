@@ -202,9 +202,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Sync Outlook emails and auto-import reviews using AI
-  app.post("/api/emails/sync", async (req, res) => {
+  // Sync Outlook emails and auto-import reviews using AI (user-scoped)
+  app.post("/api/emails/sync", isAuthenticated, async (req: any, res) => {
     try {
+      const userId = req.user?.claims?.sub;
       const outlookClient = await getUncachableOutlookClient();
       
       // Fetch recent emails from Outlook (last 24 hours recommended)
@@ -247,7 +248,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (classification.isReviewOrComplaint && classification.confidence > 50) {
           // Check for duplicates using email ID
           const externalReviewId = `outlook-${msg.id}`;
-          const existingReview = await storage.checkReviewExists(externalReviewId, 'Mailbox');
+          const existingReview = await storage.checkReviewExists(externalReviewId, 'Mailbox', userId);
           
           if (existingReview) {
             console.log(`Skipping duplicate review: ${subject}`);
@@ -267,8 +268,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             analysis.severity
           );
           
-          // Import as review
+          // Import as review (with userId)
           const newReview = await storage.createReview({
+            userId,
             externalReviewId,
             marketplace: 'Mailbox',
             productId: 'email-review',
@@ -419,9 +421,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit
   });
 
-  // Generic file import endpoint for CSV/JSON reviews
-  app.post("/api/reviews/import-file", upload.single('file'), async (req, res) => {
+  // Generic file import endpoint for CSV/JSON reviews (user-scoped)
+  app.post("/api/reviews/import-file", isAuthenticated, upload.single('file'), async (req: any, res) => {
     try {
+      const userId = req.user?.claims?.sub;
+      
       if (!req.file) {
         return res.status(400).json({ error: "No file uploaded" });
       }
@@ -515,7 +519,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           // Check for duplicates
           if (externalReviewId) {
-            const exists = await storage.checkReviewExists(externalReviewId, marketplace);
+            const exists = await storage.checkReviewExists(externalReviewId, marketplace, userId);
             if (exists) {
               console.log(`⊘ Skipping duplicate review: ${externalReviewId}`);
               skippedCount++;
@@ -524,6 +528,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
           
           await storage.createReview({
+            userId,
             externalReviewId,
             marketplace: processedReview.marketplace,
             productId: null,
@@ -562,9 +567,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Import Amazon reviews - fetch from Axesso and process through AI
-  app.post("/api/amazon/import-reviews", async (req, res) => {
+  // Import Amazon reviews - fetch from Axesso and process through AI (user-scoped)
+  app.post("/api/amazon/import-reviews", isAuthenticated, async (req: any, res) => {
     try {
+      const userId = req.user?.claims?.sub;
       let { asin, productUrl } = req.body;
       
       // Accept either ASIN or productUrl
@@ -616,7 +622,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Check for duplicates using review ID if available
           const externalReviewId = (review as any).reviewId || (review as any).id || null;
           if (externalReviewId) {
-            const exists = await storage.checkReviewExists(externalReviewId, "Amazon");
+            const exists = await storage.checkReviewExists(externalReviewId, "Amazon", userId);
             if (exists) {
               console.log(`⊘ Skipping duplicate review: ${externalReviewId}`);
               skippedCount++;
@@ -647,8 +653,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             analysis.severity
           );
 
-          // Save to database
+          // Save to database with userId
           await storage.createReview({
+            userId,
             externalReviewId,
             marketplace: "Amazon",
             productId: extractedAsin,
@@ -675,14 +682,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      // Track the product in database
-      const existingProduct = await storage.getProductByIdentifier("Amazon", extractedAsin);
+      // Track the product in database (with userId)
+      const existingProduct = await storage.getProductByIdentifier("Amazon", extractedAsin, userId);
       
       if (existingProduct) {
         await storage.updateProductLastImported(existingProduct.id);
         console.log(`✓ Updated product tracking for "${productName}"`);
       } else {
         await storage.createProduct({
+          userId,
           platform: "Amazon",
           productId: extractedAsin,
           productName,
@@ -771,10 +779,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get all imported reviews
-  app.get("/api/reviews/imported", async (req, res) => {
+  // Get all imported reviews (user-scoped)
+  app.get("/api/reviews/imported", isAuthenticated, async (req: any, res) => {
     try {
-      const reviews = await storage.getReviews();
+      const userId = req.user?.claims?.sub;
+      const reviews = await storage.getReviews(userId);
       res.json({ reviews, total: reviews.length });
     } catch (error: any) {
       console.error("Failed to fetch imported reviews:", error);
@@ -802,8 +811,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get analytics data
-  app.get("/api/analytics", async (req, res) => {
+  // Get analytics data (user-scoped)
+  app.get("/api/analytics", isAuthenticated, async (req: any, res) => {
     try {
       const { 
         startDate, 
@@ -815,8 +824,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ratings 
       } = req.query;
       
-      // Get all reviews
-      const allReviews = await storage.getReviews();
+      // Get all reviews for this user
+      const userId = req.user?.claims?.sub;
+      const allReviews = await storage.getReviews(userId);
       
       // Apply filters
       let filteredReviews = allReviews;
@@ -968,15 +978,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get all tracked products
-  app.get("/api/products/tracked", async (req, res) => {
+  // Get all tracked products (user-scoped)
+  app.get("/api/products/tracked", isAuthenticated, async (req: any, res) => {
     try {
-      const products = await storage.getProducts();
+      const userId = req.user?.claims?.sub;
+      const products = await storage.getProducts(userId);
       
       // Get review counts for each product
       const productsWithCounts = await Promise.all(
         products.map(async (product) => {
-          const reviewCount = await storage.getReviewCountForProduct(product.platform, product.productId);
+          const reviewCount = await storage.getReviewCountForProduct(product.platform, product.productId, userId);
           return {
             id: product.id,
             platform: product.platform,
@@ -995,9 +1006,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Refresh reviews for a specific product
-  app.post("/api/products/refresh", async (req, res) => {
+  // Refresh reviews for a specific product (user-scoped)
+  app.post("/api/products/refresh", isAuthenticated, async (req: any, res) => {
     try {
+      const userId = req.user?.claims?.sub;
       const { productId, platform } = req.body;
       
       if (!productId || !platform) {
@@ -1027,7 +1039,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           try {
             const externalReviewId = (review as any).reviewId || (review as any).id || null;
             if (externalReviewId) {
-              const exists = await storage.checkReviewExists(externalReviewId, "Amazon");
+              const exists = await storage.checkReviewExists(externalReviewId, "Amazon", userId);
               if (exists) {
                 skippedCount++;
                 continue;
@@ -1044,6 +1056,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const aiReply = await generateReply(reviewText, userName, "Amazon", analysis.sentiment, analysis.severity);
 
             await storage.createReview({
+              userId,
               externalReviewId,
               marketplace: "Amazon",
               productId,
@@ -1088,7 +1101,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           try {
             const externalReviewId = (review as any).reviewId || (review as any).id || null;
             if (externalReviewId) {
-              const exists = await storage.checkReviewExists(externalReviewId, "Walmart");
+              const exists = await storage.checkReviewExists(externalReviewId, "Walmart", userId);
               if (exists) {
                 skippedCount++;
                 continue;
@@ -1103,6 +1116,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const aiReply = await generateReply(reviewText, userName, "Walmart", analysis.sentiment, analysis.severity);
 
             await storage.createReview({
+              userId,
               externalReviewId,
               marketplace: "Walmart",
               productId,
@@ -1131,8 +1145,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Unsupported platform for refresh" });
       }
 
-      // Update last imported timestamp
-      const product = await storage.getProductByIdentifier(platform, productId);
+      // Update last imported timestamp (with userId)
+      const product = await storage.getProductByIdentifier(platform, productId, userId);
       if (product) {
         await storage.updateProductLastImported(product.id);
       }
