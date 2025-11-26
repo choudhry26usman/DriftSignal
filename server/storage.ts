@@ -18,19 +18,19 @@ export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
   
-  // Review methods
-  getReviews(): Promise<Review[]>;
+  // Review methods (user-scoped)
+  getReviews(userId?: string): Promise<Review[]>;
   getReviewById(id: string): Promise<Review | undefined>;
   createReview(review: InsertReview): Promise<Review>;
   updateReviewStatus(id: string, status: string): Promise<void>;
-  checkReviewExists(externalReviewId: string, marketplace: string): Promise<boolean>;
+  checkReviewExists(externalReviewId: string, marketplace: string, userId?: string): Promise<boolean>;
   
-  // Product methods
-  getProducts(): Promise<Product[]>;
-  getProductByIdentifier(platform: string, productId: string): Promise<Product | undefined>;
+  // Product methods (user-scoped)
+  getProducts(userId?: string): Promise<Product[]>;
+  getProductByIdentifier(platform: string, productId: string, userId?: string): Promise<Product | undefined>;
   createProduct(product: InsertProduct): Promise<Product>;
   updateProductLastImported(id: string): Promise<void>;
-  getReviewCountForProduct(platform: string, productId: string): Promise<number>;
+  getReviewCountForProduct(platform: string, productId: string, userId?: string): Promise<number>;
 }
 
 export class MemStorage implements IStorage {
@@ -60,7 +60,7 @@ export class MemStorage implements IStorage {
   }
 
   // Review methods (not implemented for MemStorage)
-  async getReviews(): Promise<Review[]> {
+  async getReviews(userId?: string): Promise<Review[]> {
     return [];
   }
 
@@ -76,16 +76,16 @@ export class MemStorage implements IStorage {
     throw new Error("Not implemented");
   }
 
-  async checkReviewExists(externalReviewId: string, marketplace: string): Promise<boolean> {
+  async checkReviewExists(externalReviewId: string, marketplace: string, userId?: string): Promise<boolean> {
     return false;
   }
 
   // Product methods (not implemented for MemStorage)
-  async getProducts(): Promise<Product[]> {
+  async getProducts(userId?: string): Promise<Product[]> {
     return [];
   }
 
-  async getProductByIdentifier(platform: string, productId: string): Promise<Product | undefined> {
+  async getProductByIdentifier(platform: string, productId: string, userId?: string): Promise<Product | undefined> {
     return undefined;
   }
 
@@ -97,7 +97,7 @@ export class MemStorage implements IStorage {
     throw new Error("Not implemented");
   }
 
-  async getReviewCountForProduct(platform: string, productId: string): Promise<number> {
+  async getReviewCountForProduct(platform: string, productId: string, userId?: string): Promise<number> {
     return 0;
   }
 }
@@ -130,8 +130,13 @@ export class DBStorage implements IStorage {
     return user;
   }
 
-  // Review methods
-  async getReviews(): Promise<Review[]> {
+  // Review methods (user-scoped)
+  async getReviews(userId?: string): Promise<Review[]> {
+    if (userId) {
+      return db.select().from(reviews)
+        .where(eq(reviews.userId, userId))
+        .orderBy(desc(reviews.importedAt));
+    }
     return db.select().from(reviews).orderBy(desc(reviews.importedAt));
   }
 
@@ -152,36 +157,49 @@ export class DBStorage implements IStorage {
     await db.update(reviews).set({ status }).where(eq(reviews.id, id));
   }
 
-  async checkReviewExists(externalReviewId: string, marketplace: string): Promise<boolean> {
+  async checkReviewExists(externalReviewId: string, marketplace: string, userId?: string): Promise<boolean> {
     if (!externalReviewId) return false;
+    
+    const conditions = [
+      eq(reviews.externalReviewId, externalReviewId),
+      eq(reviews.marketplace, marketplace)
+    ];
+    
+    if (userId) {
+      conditions.push(eq(reviews.userId, userId));
+    }
     
     const result = await db.select({ id: reviews.id })
       .from(reviews)
-      .where(
-        and(
-          eq(reviews.externalReviewId, externalReviewId),
-          eq(reviews.marketplace, marketplace)
-        )
-      )
+      .where(and(...conditions))
       .limit(1);
     
     return result.length > 0;
   }
 
-  // Product methods
-  async getProducts(): Promise<Product[]> {
+  // Product methods (user-scoped)
+  async getProducts(userId?: string): Promise<Product[]> {
+    if (userId) {
+      return db.select().from(products)
+        .where(eq(products.userId, userId))
+        .orderBy(desc(products.lastImported));
+    }
     return db.select().from(products).orderBy(desc(products.lastImported));
   }
 
-  async getProductByIdentifier(platform: string, productId: string): Promise<Product | undefined> {
+  async getProductByIdentifier(platform: string, productId: string, userId?: string): Promise<Product | undefined> {
+    const conditions = [
+      eq(products.platform, platform),
+      eq(products.productId, productId)
+    ];
+    
+    if (userId) {
+      conditions.push(eq(products.userId, userId));
+    }
+    
     const result = await db.select()
       .from(products)
-      .where(
-        and(
-          eq(products.platform, platform),
-          eq(products.productId, productId)
-        )
-      )
+      .where(and(...conditions))
       .limit(1);
     return result[0];
   }
@@ -195,15 +213,19 @@ export class DBStorage implements IStorage {
     await db.update(products).set({ lastImported: new Date() }).where(eq(products.id, id));
   }
 
-  async getReviewCountForProduct(platform: string, productId: string): Promise<number> {
+  async getReviewCountForProduct(platform: string, productId: string, userId?: string): Promise<number> {
+    const conditions = [
+      eq(reviews.marketplace, platform),
+      eq(reviews.productId, productId)
+    ];
+    
+    if (userId) {
+      conditions.push(eq(reviews.userId, userId));
+    }
+    
     const result = await db.select({ count: sql<number>`count(*)` })
       .from(reviews)
-      .where(
-        and(
-          eq(reviews.marketplace, platform),
-          eq(reviews.productId, productId)
-        )
-      );
+      .where(and(...conditions));
     
     return Number(result[0]?.count || 0);
   }
