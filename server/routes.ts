@@ -400,7 +400,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { amazonUrl, action } = req.body;
 
       if (action === 'reviews' && amazonUrl) {
-        const reviews = await getProductReviews(amazonUrl, 1);
+        const reviews = await getProductReviews(amazonUrl);
         res.json({ success: true, data: reviews });
       } else if (action === 'search') {
         const keyword = req.body.keyword || 'laptop';
@@ -1020,6 +1020,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Failed to fetch tracked products:", error);
       res.status(500).json({ error: "Failed to fetch tracked products" });
+    }
+  });
+
+  // Delete a tracked product (user-scoped)
+  app.post("/api/products/delete", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      const { productId, platform, deleteReviews } = req.body;
+      
+      if (!productId) {
+        return res.status(400).json({ error: "Product ID is required" });
+      }
+
+      // Find the product first
+      const product = await storage.getProductByIdentifier(platform, productId, userId);
+      if (!product) {
+        return res.status(404).json({ error: "Product not found" });
+      }
+
+      let deletedReviewsCount = 0;
+      
+      // If deleteReviews is true, delete all reviews for this product
+      if (deleteReviews) {
+        deletedReviewsCount = await storage.deleteReviewsForProduct(platform, productId, userId);
+        console.log(`Deleted ${deletedReviewsCount} reviews for product ${productId}`);
+      }
+
+      // Delete the product
+      const deleted = await storage.deleteProduct(product.id, userId);
+      
+      if (!deleted) {
+        return res.status(500).json({ error: "Failed to delete product" });
+      }
+
+      console.log(`Deleted product ${productId} (${platform}) for user ${userId}`);
+
+      res.json({ 
+        success: true, 
+        message: deleteReviews 
+          ? `Product removed and ${deletedReviewsCount} review(s) deleted`
+          : "Product removed from tracking",
+        deletedReviewsCount
+      });
+    } catch (error: any) {
+      console.error("Failed to delete product:", error);
+      res.status(500).json({ error: "Failed to delete product" });
     }
   });
 

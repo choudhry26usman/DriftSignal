@@ -6,7 +6,17 @@ import { ReviewCard } from "@/components/ReviewCard";
 import { ReviewDetailModal } from "@/components/ReviewDetailModal";
 import { ImportReviewsModal } from "@/components/ImportReviewsModal";
 import { ImportProductModal } from "@/components/ImportProductModal";
-import { MessageSquare, TrendingUp, Clock, CheckCircle, Search, Upload, Download, Mail, RefreshCw, Loader2, Package, ShoppingCart, ExternalLink } from "lucide-react";
+import { MessageSquare, TrendingUp, Clock, CheckCircle, Search, Upload, Download, Mail, RefreshCw, Loader2, Package, ShoppingCart, ExternalLink, Trash2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -26,6 +36,7 @@ export default function Dashboard() {
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isImportProductModalOpen, setIsImportProductModalOpen] = useState(false);
   const [refreshingProductId, setRefreshingProductId] = useState<string | null>(null);
+  const [deletingProduct, setDeletingProduct] = useState<{ productId: string; platform: string; productName: string } | null>(null);
   const { toast } = useToast();
   
   const marketplaceFilter = useMemo(() => {
@@ -111,6 +122,50 @@ export default function Dashboard() {
   const handleRefreshProduct = (productId: string, platform: string) => {
     setRefreshingProductId(productId);
     refreshProductMutation.mutate({ productId, platform });
+  };
+
+  const deleteProductMutation = useMutation({
+    mutationFn: async ({ productId, platform, deleteReviews }: { productId: string; platform: string; deleteReviews: boolean }) => {
+      const response = await fetch("/api/products/delete", {
+        method: "POST",
+        body: JSON.stringify({ productId, platform, deleteReviews }),
+        headers: { "Content-Type": "application/json" },
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to delete product");
+      }
+      
+      return response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/products/tracked"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/reviews/imported"] });
+      setDeletingProduct(null);
+      
+      toast({
+        title: "Product Removed",
+        description: data.message,
+      });
+    },
+    onError: (error: any) => {
+      setDeletingProduct(null);
+      toast({
+        title: "Delete Failed",
+        description: error.message || "Could not delete product. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleDeleteProduct = (deleteReviews: boolean) => {
+    if (!deletingProduct) return;
+    deleteProductMutation.mutate({
+      productId: deletingProduct.productId,
+      platform: deletingProduct.platform,
+      deleteReviews,
+    });
   };
 
   const allReviews = useMemo(() => {
@@ -375,6 +430,19 @@ export default function Dashboard() {
                                 <RefreshCw className="h-4 w-4" />
                               )}
                             </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              onClick={() => setDeletingProduct({
+                                productId: product.productId,
+                                platform: product.platform,
+                                productName: product.productName,
+                              })}
+                              title="Remove product"
+                              data-testid={`button-delete-${product.productId}`}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
                           </div>
                         </div>
                       </div>
@@ -463,6 +531,45 @@ export default function Dashboard() {
         open={isImportProductModalOpen}
         onOpenChange={setIsImportProductModalOpen}
       />
+
+      <AlertDialog open={!!deletingProduct} onOpenChange={(open) => !open && setDeletingProduct(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove Product</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <p>
+                You are about to remove "<span className="font-medium">{deletingProduct?.productName}</span>" from tracking.
+              </p>
+              <p>What would you like to do with the existing reviews?</p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+            <AlertDialogCancel data-testid="button-cancel-delete">Cancel</AlertDialogCancel>
+            <Button
+              variant="outline"
+              onClick={() => handleDeleteProduct(false)}
+              disabled={deleteProductMutation.isPending}
+              data-testid="button-stop-tracking"
+            >
+              {deleteProductMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : null}
+              Stop Tracking
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => handleDeleteProduct(true)}
+              disabled={deleteProductMutation.isPending}
+              data-testid="button-delete-all"
+            >
+              {deleteProductMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : null}
+              Delete All Data
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
