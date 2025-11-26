@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Star, ThumbsUp, ThumbsDown, Minus, Send, Save, Mail, Sparkles } from "lucide-react";
+import { Star, ThumbsUp, ThumbsDown, Minus, Send, Save, Mail, Sparkles, Copy, ExternalLink, Check } from "lucide-react";
 import { SiAmazon, SiShopify, SiWalmart } from "react-icons/si";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
@@ -52,12 +52,35 @@ interface ReviewDetailModalProps {
   };
 }
 
+const sellerPortalInfo = {
+  Amazon: {
+    name: "Amazon Seller Central",
+    url: "https://sellercentral.amazon.com",
+    path: "Performance > Customer Reviews",
+  },
+  Walmart: {
+    name: "Walmart Seller Center", 
+    url: "https://seller.walmart.com",
+    path: "Reviews & Ratings",
+  },
+  Shopify: {
+    name: "Shopify Admin",
+    url: null,
+    path: "Orders > Customer details",
+  },
+  Mailbox: null,
+};
+
 export function ReviewDetailModal({ open, onOpenChange, review }: ReviewDetailModalProps) {
   const [replyText, setReplyText] = useState(review.aiSuggestedReply || "");
   const [isGenerating, setIsGenerating] = useState(false);
+  const [copied, setCopied] = useState(false);
   const { toast } = useToast();
   const MarketplaceIcon = marketplaceIcons[review.marketplace];
   const SentimentIcon = sentimentConfig[review.sentiment].icon;
+  
+  const isEmailReview = review.marketplace === "Mailbox";
+  const portalInfo = sellerPortalInfo[review.marketplace];
 
   const sendEmailMutation = useMutation({
     mutationFn: async (data: { to: string; subject: string; body: string }) => {
@@ -123,6 +146,33 @@ export function ReviewDetailModal({ open, onOpenChange, review }: ReviewDetailMo
     });
   };
 
+  const handleCopyReply = async () => {
+    if (!replyText) {
+      toast({
+        title: "No Reply to Copy",
+        description: "Generate or write a reply first.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(replyText);
+      setCopied(true);
+      toast({
+        title: "Copied to Clipboard",
+        description: portalInfo ? `Paste this reply in ${portalInfo.name}` : "Reply copied successfully.",
+      });
+      setTimeout(() => setCopied(false), 2000);
+    } catch (error) {
+      toast({
+        title: "Copy Failed",
+        description: "Could not copy to clipboard. Please select and copy manually.",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto" data-testid="modal-review-detail">
@@ -170,7 +220,7 @@ export function ReviewDetailModal({ open, onOpenChange, review }: ReviewDetailMo
               </CardContent>
             </Card>
 
-            {review.customerEmail && (
+            {isEmailReview && review.customerEmail && (
               <Card>
                 <CardHeader>
                   <CardTitle className="text-lg flex items-center gap-2">
@@ -335,9 +385,44 @@ export function ReviewDetailModal({ open, onOpenChange, review }: ReviewDetailMo
                 placeholder="AI-generated response will appear here..."
                 data-testid="textarea-response"
               />
-              <p className="text-xs text-muted-foreground">
-                Edit the AI-generated response before sending via Outlook
-              </p>
+              {isEmailReview ? (
+                <p className="text-xs text-muted-foreground">
+                  Edit the AI-generated response before sending via Outlook
+                </p>
+              ) : portalInfo && (
+                <Card className="bg-muted/50">
+                  <CardContent className="p-3">
+                    <div className="flex items-start gap-2">
+                      <ExternalLink className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
+                      <div className="text-xs">
+                        <p className="font-medium">How to respond to this review:</p>
+                        <p className="text-muted-foreground mt-1">
+                          1. Copy the reply below using the button
+                        </p>
+                        <p className="text-muted-foreground">
+                          2. Go to <span className="font-medium text-foreground">{portalInfo.name}</span>
+                          {portalInfo.url && (
+                            <a 
+                              href={portalInfo.url} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-primary hover:underline ml-1"
+                            >
+                              (Open)
+                            </a>
+                          )}
+                        </p>
+                        <p className="text-muted-foreground">
+                          3. Navigate to <span className="font-medium text-foreground">{portalInfo.path}</span>
+                        </p>
+                        <p className="text-muted-foreground">
+                          4. Find this review and paste your response
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
             </div>
 
             <div className="flex gap-2">
@@ -345,15 +430,37 @@ export function ReviewDetailModal({ open, onOpenChange, review }: ReviewDetailMo
                 <Save className="h-4 w-4 mr-2" />
                 Save Draft
               </Button>
-              <Button 
-                className="flex-1" 
-                onClick={handleSendReply}
-                disabled={sendEmailMutation.isPending || !replyText}
-                data-testid="button-send-reply"
-              >
-                <Send className="h-4 w-4 mr-2" />
-                {sendEmailMutation.isPending ? "Sending..." : "Send via Outlook"}
-              </Button>
+              
+              {isEmailReview ? (
+                <Button 
+                  className="flex-1" 
+                  onClick={handleSendReply}
+                  disabled={sendEmailMutation.isPending || !replyText}
+                  data-testid="button-send-reply"
+                >
+                  <Send className="h-4 w-4 mr-2" />
+                  {sendEmailMutation.isPending ? "Sending..." : "Send via Outlook"}
+                </Button>
+              ) : (
+                <Button 
+                  className="flex-1" 
+                  onClick={handleCopyReply}
+                  disabled={!replyText}
+                  data-testid="button-copy-reply"
+                >
+                  {copied ? (
+                    <>
+                      <Check className="h-4 w-4 mr-2" />
+                      Copied!
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="h-4 w-4 mr-2" />
+                      Copy Reply
+                    </>
+                  )}
+                </Button>
+              )}
             </div>
           </TabsContent>
         </Tabs>
