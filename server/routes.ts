@@ -611,74 +611,91 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Extract product info from the result
       const productName = (result as any).productTitle || `Amazon Product ${extractedAsin}`;
       
-      console.log(`Processing ${result.reviews.length} reviews for "${productName}"...`);
+      console.log(`Processing ${result.reviews.length} reviews for "${productName}" in parallel...`);
       
-      // Process each review through AI with duplicate detection
-      let importedCount = 0;
+      // Filter out duplicates first
+      const reviewsToProcess: Array<{
+        review: any;
+        externalReviewId: string | null;
+        reviewText: string;
+        userName: string;
+        reviewTitle: string;
+        ratingString: string;
+        reviewDate: string;
+      }> = [];
+      
       let skippedCount = 0;
       
       for (const review of result.reviews) {
-        try {
-          // Check for duplicates using review ID if available
-          const externalReviewId = (review as any).reviewId || (review as any).id || null;
-          if (externalReviewId) {
-            const exists = await storage.checkReviewExists(externalReviewId, "Amazon", userId);
-            if (exists) {
-              console.log(`⊘ Skipping duplicate review: ${externalReviewId}`);
-              skippedCount++;
-              continue;
-            }
+        const externalReviewId = (review as any).reviewId || (review as any).id || null;
+        if (externalReviewId) {
+          const exists = await storage.checkReviewExists(externalReviewId, "Amazon", userId);
+          if (exists) {
+            console.log(`⊘ Skipping duplicate review: ${externalReviewId}`);
+            skippedCount++;
+            continue;
           }
-          
-          // Axesso returns: text, userName, title, rating, date
-          const reviewText = review.text || '';
-          const userName = review.userName || 'Anonymous';
-          const reviewTitle = review.title || 'Review';
-          const ratingString = review.rating || '0';
-          const reviewDate = review.date || new Date().toISOString();
-          
-          // Analyze the review
-          const analysis = await analyzeReview(
-            reviewText,
-            userName,
-            "Amazon"
-          );
+        }
+        
+        reviewsToProcess.push({
+          review,
+          externalReviewId,
+          reviewText: review.text || '',
+          userName: review.userName || 'Anonymous',
+          reviewTitle: review.title || 'Review',
+          ratingString: review.rating || '0',
+          reviewDate: review.date || new Date().toISOString(),
+        });
+      }
+      
+      // Process reviews in parallel (batch of 5 for rate limiting)
+      const BATCH_SIZE = 5;
+      let importedCount = 0;
+      
+      for (let i = 0; i < reviewsToProcess.length; i += BATCH_SIZE) {
+        const batch = reviewsToProcess.slice(i, i + BATCH_SIZE);
+        
+        const batchResults = await Promise.allSettled(
+          batch.map(async ({ externalReviewId, reviewText, userName, reviewTitle, ratingString, reviewDate }) => {
+            // Run analysis and reply generation in parallel
+            const [analysis, aiReply] = await Promise.all([
+              analyzeReview(reviewText, userName, "Amazon"),
+              generateReply(reviewText, userName, "Amazon", "neutral", "medium") // Initial call, will be refined
+            ]);
 
-          // Generate AI reply
-          const aiReply = await generateReply(
-            reviewText,
-            userName,
-            "Amazon",
-            analysis.sentiment,
-            analysis.severity
-          );
-
-          // Save to database with userId
-          await storage.createReview({
-            userId,
-            externalReviewId,
-            marketplace: "Amazon",
-            productId: extractedAsin,
-            title: reviewTitle,
-            content: reviewText,
-            customerName: userName,
-            customerEmail: `${userName.toLowerCase().replace(/\s+/g, '.')}@amazon.customer`,
-            rating: Math.round(parseFloat(ratingString.replace(/[^\d.]/g, '')) || 0),
-            sentiment: analysis.sentiment,
-            category: analysis.category,
-            severity: analysis.severity,
-            status: "open",
-            createdAt: new Date(reviewDate),
-            aiSuggestedReply: aiReply,
-            aiAnalysisDetails: JSON.stringify(analysis),
-            verified: 1,
-          });
-
-          importedCount++;
-          console.log(`✓ Imported review from ${userName} (${analysis.sentiment}/${analysis.severity})`);
-        } catch (error) {
-          console.error(`Failed to process review:`, error);
-          skippedCount++;
+            // Save to database with userId
+            await storage.createReview({
+              userId,
+              externalReviewId,
+              marketplace: "Amazon",
+              productId: extractedAsin,
+              title: reviewTitle,
+              content: reviewText,
+              customerName: userName,
+              customerEmail: `${userName.toLowerCase().replace(/\s+/g, '.')}@amazon.customer`,
+              rating: Math.round(parseFloat(ratingString.replace(/[^\d.]/g, '')) || 0),
+              sentiment: analysis.sentiment,
+              category: analysis.category,
+              severity: analysis.severity,
+              status: "open",
+              createdAt: new Date(reviewDate),
+              aiSuggestedReply: aiReply,
+              aiAnalysisDetails: JSON.stringify(analysis),
+              verified: 1,
+            });
+            
+            return { userName, sentiment: analysis.sentiment, severity: analysis.severity };
+          })
+        );
+        
+        for (const result of batchResults) {
+          if (result.status === 'fulfilled') {
+            importedCount++;
+            console.log(`✓ Imported review from ${result.value.userName} (${result.value.sentiment}/${result.value.severity})`);
+          } else {
+            console.error(`Failed to process review:`, result.reason);
+            skippedCount++;
+          }
         }
       }
 
@@ -1034,52 +1051,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
 
-        // Process each review with duplicate detection
+        // Filter duplicates first
+        const reviewsToProcess: Array<any> = [];
         for (const review of result.reviews) {
-          try {
-            const externalReviewId = (review as any).reviewId || (review as any).id || null;
-            if (externalReviewId) {
-              const exists = await storage.checkReviewExists(externalReviewId, "Amazon", userId);
-              if (exists) {
-                skippedCount++;
-                continue;
-              }
+          const externalReviewId = (review as any).reviewId || (review as any).id || null;
+          if (externalReviewId) {
+            const exists = await storage.checkReviewExists(externalReviewId, "Amazon", userId);
+            if (exists) {
+              skippedCount++;
+              continue;
             }
-            
-            const reviewText = review.text || '';
-            const userName = review.userName || 'Anonymous';
-            const reviewTitle = review.title || 'Review';
-            const ratingString = review.rating || '0';
-            const reviewDate = review.date || new Date().toISOString();
-            
-            const analysis = await analyzeReview(reviewText, userName, "Amazon");
-            const aiReply = await generateReply(reviewText, userName, "Amazon", analysis.sentiment, analysis.severity);
-
-            await storage.createReview({
-              userId,
-              externalReviewId,
-              marketplace: "Amazon",
-              productId,
-              title: reviewTitle,
-              content: reviewText,
-              customerName: userName,
-              customerEmail: `${userName.toLowerCase().replace(/\s+/g, '.')}@amazon.customer`,
-              rating: Math.round(parseFloat(ratingString.replace(/[^\d.]/g, '')) || 0),
-              sentiment: analysis.sentiment,
-              category: analysis.category,
-              severity: analysis.severity,
-              status: "open",
-              createdAt: new Date(reviewDate),
-              aiSuggestedReply: aiReply,
-              aiAnalysisDetails: JSON.stringify(analysis),
-              verified: 1,
-            });
-
-            importedCount++;
-          } catch (error) {
-            console.error(`Failed to process review:`, error);
-            skippedCount++;
           }
+          reviewsToProcess.push({
+            externalReviewId,
+            reviewText: review.text || '',
+            userName: review.userName || 'Anonymous',
+            reviewTitle: review.title || 'Review',
+            ratingString: review.rating || '0',
+            reviewDate: review.date || new Date().toISOString(),
+          });
+        }
+
+        // Process in parallel batches
+        const BATCH_SIZE = 5;
+        for (let i = 0; i < reviewsToProcess.length; i += BATCH_SIZE) {
+          const batch = reviewsToProcess.slice(i, i + BATCH_SIZE);
+          const batchResults = await Promise.allSettled(
+            batch.map(async ({ externalReviewId, reviewText, userName, reviewTitle, ratingString, reviewDate }) => {
+              const [analysis, aiReply] = await Promise.all([
+                analyzeReview(reviewText, userName, "Amazon"),
+                generateReply(reviewText, userName, "Amazon", "neutral", "medium")
+              ]);
+              await storage.createReview({
+                userId,
+                externalReviewId,
+                marketplace: "Amazon",
+                productId,
+                title: reviewTitle,
+                content: reviewText,
+                customerName: userName,
+                customerEmail: `${userName.toLowerCase().replace(/\s+/g, '.')}@amazon.customer`,
+                rating: Math.round(parseFloat(ratingString.replace(/[^\d.]/g, '')) || 0),
+                sentiment: analysis.sentiment,
+                category: analysis.category,
+                severity: analysis.severity,
+                status: "open",
+                createdAt: new Date(reviewDate),
+                aiSuggestedReply: aiReply,
+                aiAnalysisDetails: JSON.stringify(analysis),
+                verified: 1,
+              });
+            })
+          );
+          importedCount += batchResults.filter(r => r.status === 'fulfilled').length;
+          skippedCount += batchResults.filter(r => r.status === 'rejected').length;
         }
       } else if (platform === "Walmart") {
         const { fetchWalmartProduct } = await import("./integrations/walmart");
@@ -1096,50 +1121,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
 
-        // Process each review with duplicate detection
+        // Filter duplicates first
+        const reviewsToProcess: Array<any> = [];
         for (const review of result.reviews) {
-          try {
-            const externalReviewId = (review as any).reviewId || (review as any).id || null;
-            if (externalReviewId) {
-              const exists = await storage.checkReviewExists(externalReviewId, "Walmart", userId);
-              if (exists) {
-                skippedCount++;
-                continue;
-              }
+          const externalReviewId = (review as any).reviewId || (review as any).id || null;
+          if (externalReviewId) {
+            const exists = await storage.checkReviewExists(externalReviewId, "Walmart", userId);
+            if (exists) {
+              skippedCount++;
+              continue;
             }
-            
-            const reviewText = review.text || '';
-            const userName = review.reviewerName || 'Anonymous';
-            const reviewTitle = review.title || 'Review';
-            
-            const analysis = await analyzeReview(reviewText, userName, "Walmart");
-            const aiReply = await generateReply(reviewText, userName, "Walmart", analysis.sentiment, analysis.severity);
-
-            await storage.createReview({
-              userId,
-              externalReviewId,
-              marketplace: "Walmart",
-              productId,
-              title: reviewTitle,
-              content: reviewText,
-              customerName: userName,
-              customerEmail: `${userName.toLowerCase().replace(/\s+/g, '.')}@walmart.customer`,
-              rating: review.rating,
-              sentiment: analysis.sentiment,
-              category: analysis.category,
-              severity: analysis.severity,
-              status: "open",
-              createdAt: new Date(review.date),
-              aiSuggestedReply: aiReply,
-              aiAnalysisDetails: JSON.stringify(analysis),
-              verified: 1,
-            });
-
-            importedCount++;
-          } catch (error) {
-            console.error(`Failed to process review:`, error);
-            skippedCount++;
           }
+          reviewsToProcess.push({
+            externalReviewId,
+            reviewText: review.text || '',
+            userName: review.reviewerName || 'Anonymous',
+            reviewTitle: review.title || 'Review',
+            rating: review.rating,
+            reviewDate: review.date,
+          });
+        }
+
+        // Process in parallel batches
+        const BATCH_SIZE = 5;
+        for (let i = 0; i < reviewsToProcess.length; i += BATCH_SIZE) {
+          const batch = reviewsToProcess.slice(i, i + BATCH_SIZE);
+          const batchResults = await Promise.allSettled(
+            batch.map(async ({ externalReviewId, reviewText, userName, reviewTitle, rating, reviewDate }) => {
+              const [analysis, aiReply] = await Promise.all([
+                analyzeReview(reviewText, userName, "Walmart"),
+                generateReply(reviewText, userName, "Walmart", "neutral", "medium")
+              ]);
+              await storage.createReview({
+                userId,
+                externalReviewId,
+                marketplace: "Walmart",
+                productId,
+                title: reviewTitle,
+                content: reviewText,
+                customerName: userName,
+                customerEmail: `${userName.toLowerCase().replace(/\s+/g, '.')}@walmart.customer`,
+                rating: rating,
+                sentiment: analysis.sentiment,
+                category: analysis.category,
+                severity: analysis.severity,
+                status: "open",
+                createdAt: new Date(reviewDate),
+                aiSuggestedReply: aiReply,
+                aiAnalysisDetails: JSON.stringify(analysis),
+                verified: 1,
+              });
+            })
+          );
+          importedCount += batchResults.filter(r => r.status === 'fulfilled').length;
+          skippedCount += batchResults.filter(r => r.status === 'rejected').length;
         }
       } else {
         return res.status(400).json({ error: "Unsupported platform for refresh" });
