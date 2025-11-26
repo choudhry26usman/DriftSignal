@@ -31,6 +31,7 @@ export type User = typeof users.$inferSelect;
 // Review schema for marketplace reviews
 export const reviews = pgTable("reviews", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id"), // Owner of this review (null for legacy data)
   externalReviewId: text("external_review_id"), // For duplicate detection (e.g., Amazon review ID)
   marketplace: text("marketplace").notNull(), // Amazon, Shopify, Walmart, Website
   productId: text("product_id"), // ASIN, product ID, etc.
@@ -61,6 +62,7 @@ export type Review = typeof reviews.$inferSelect;
 // Tracked products schema
 export const products = pgTable("products", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id"), // Owner of this product (null for legacy data)
   platform: text("platform").notNull(), // Amazon, Shopify, Walmart
   productId: text("product_id").notNull(), // ASIN, product ID, etc.
   productName: text("product_name").notNull(),
