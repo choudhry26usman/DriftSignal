@@ -8,16 +8,19 @@
 const APIFY_BASE_URL = 'https://api.apify.com/v2';
 
 interface ApifyReview {
+  // Actual field names from Apify junglee/amazon-reviews-scraper
   reviewTitle: string;
-  reviewText: string;
-  rating: number;
-  reviewerName: string;
-  reviewDate: string;
-  verified: boolean;
-  helpfulVotes?: number;
-  images?: string[];
-  asin: string;
-  reviewId?: string;
+  reviewDescription: string;  // Not reviewText
+  ratingScore: number;        // Not rating
+  userId: string;             // User ID, not name directly
+  date: string;               // Not reviewDate
+  isVerified: boolean;        // Not verified
+  reviewReaction?: string;    // e.g. "9 people found this helpful"
+  reviewImages?: string[];
+  productAsin: string;        // Not asin
+  reviewId: string;
+  reviewUrl?: string;
+  variant?: string;
 }
 
 interface ApifyRunResponse {
@@ -211,25 +214,35 @@ export function convertApifyReview(review: ApifyReview): {
   productAsin?: string;
 } {
   const reviewId = review.reviewId || 
-    `apify-${review.asin}-${review.reviewerName}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    `apify-${review.productAsin}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   
   let parsedDate = new Date();
-  if (review.reviewDate) {
-    const parsed = new Date(review.reviewDate);
+  if (review.date) {
+    const parsed = new Date(review.date);
     if (!isNaN(parsed.getTime())) {
       parsedDate = parsed;
+    }
+  }
+  
+  // Extract a display name from userId (last part after the dot) or use 'Amazon Customer'
+  let customerName = 'Amazon Customer';
+  if (review.userId) {
+    const parts = review.userId.split('.');
+    if (parts.length > 0) {
+      // Keep it simple - use 'Amazon Customer' since we don't have the actual name
+      customerName = 'Amazon Reviewer';
     }
   }
   
   return {
     externalReviewId: reviewId,
     marketplace: 'amazon',
-    customerName: review.reviewerName || 'Amazon Customer',
-    rating: Math.round(review.rating || 0),
+    customerName: customerName,
+    rating: Math.round(review.ratingScore || 0),
     title: review.reviewTitle || '',
-    content: review.reviewText || '',
+    content: review.reviewDescription || '',
     reviewDate: parsedDate,
-    verified: review.verified || false,
-    productAsin: review.asin
+    verified: review.isVerified || false,
+    productAsin: review.productAsin
   };
 }
