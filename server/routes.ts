@@ -1040,35 +1040,78 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Fetch latest reviews based on platform
       if (platform === "Amazon") {
+        // Try Outscraper first (better pagination, 500 free reviews/month)
+        // Fall back to Axesso if Outscraper is not configured
+        const { isOutscraperConfigured, getAmazonReviews, convertOutscraperReview } = await import("./integrations/outscraper");
         const { getProductReviews } = await import("./integrations/axesso");
-        const result = await getProductReviews(productId);
         
-        if (!result.reviews || result.reviews.length === 0) {
+        let reviewsToProcess: Array<any> = [];
+        
+        if (isOutscraperConfigured()) {
+          console.log("Using Outscraper for Amazon reviews...");
+          try {
+            const { reviews } = await getAmazonReviews(productId, 100);
+            
+            for (const review of reviews) {
+              const converted = convertOutscraperReview(review);
+              const exists = await storage.checkReviewExists(converted.externalReviewId, "Amazon", userId);
+              if (exists) {
+                skippedCount++;
+                continue;
+              }
+              reviewsToProcess.push({
+                externalReviewId: converted.externalReviewId,
+                reviewText: converted.content,
+                userName: converted.customerName,
+                reviewTitle: converted.title,
+                ratingString: converted.rating.toString(),
+                reviewDate: converted.reviewDate.toISOString(),
+              });
+            }
+          } catch (error) {
+            console.error("Outscraper failed, falling back to Axesso:", error);
+            reviewsToProcess = [];
+          }
+        }
+        
+        // Fallback to Axesso if Outscraper not configured or failed
+        if (reviewsToProcess.length === 0 && skippedCount === 0) {
+          console.log("Using Axesso for Amazon reviews (limited to ~8 reviews)...");
+          const result = await getProductReviews(productId);
+          
+          if (!result.reviews || result.reviews.length === 0) {
+            return res.json({ 
+              imported: 0,
+              skipped: 0,
+              message: "No reviews found for this product" 
+            });
+          }
+
+          for (const review of result.reviews) {
+            const externalReviewId = (review as any).reviewId || (review as any).id || null;
+            if (externalReviewId) {
+              const exists = await storage.checkReviewExists(externalReviewId, "Amazon", userId);
+              if (exists) {
+                skippedCount++;
+                continue;
+              }
+            }
+            reviewsToProcess.push({
+              externalReviewId,
+              reviewText: review.text || '',
+              userName: review.userName || 'Anonymous',
+              reviewTitle: review.title || 'Review',
+              ratingString: review.rating || '0',
+              reviewDate: review.date || new Date().toISOString(),
+            });
+          }
+        }
+        
+        if (reviewsToProcess.length === 0 && skippedCount === 0) {
           return res.json({ 
             imported: 0,
             skipped: 0,
             message: "No reviews found for this product" 
-          });
-        }
-
-        // Filter duplicates first
-        const reviewsToProcess: Array<any> = [];
-        for (const review of result.reviews) {
-          const externalReviewId = (review as any).reviewId || (review as any).id || null;
-          if (externalReviewId) {
-            const exists = await storage.checkReviewExists(externalReviewId, "Amazon", userId);
-            if (exists) {
-              skippedCount++;
-              continue;
-            }
-          }
-          reviewsToProcess.push({
-            externalReviewId,
-            reviewText: review.text || '',
-            userName: review.userName || 'Anonymous',
-            reviewTitle: review.title || 'Review',
-            ratingString: review.rating || '0',
-            reviewDate: review.date || new Date().toISOString(),
           });
         }
 
