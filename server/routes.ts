@@ -944,9 +944,79 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return acc;
       }, {} as Record<string, number>);
 
-      // Calculate category distribution
+      // Standardized category list
+      const STANDARD_CATEGORIES = [
+        "Product Quality",
+        "Product Performance", 
+        "Shipping & Delivery",
+        "Packaging",
+        "Customer Service",
+        "Value & Pricing",
+        "Sizing & Fit",
+        "Color & Appearance",
+        "Setup & Instructions",
+        "Compatibility",
+        "Safety Concern",
+        "Praise & Satisfaction"
+      ];
+
+      // Map legacy categories to standardized ones
+      const mapToStandardCategory = (category: string): string => {
+        const categoryLower = category.toLowerCase();
+        
+        // Direct matches to standard categories
+        for (const stdCat of STANDARD_CATEGORIES) {
+          if (categoryLower === stdCat.toLowerCase()) return stdCat;
+        }
+        
+        // Map common legacy categories
+        if (categoryLower.includes('quality') || categoryLower.includes('durability') || categoryLower.includes('defect')) {
+          return "Product Quality";
+        }
+        if (categoryLower.includes('performance') || categoryLower.includes('function') || categoryLower.includes('work')) {
+          return "Product Performance";
+        }
+        if (categoryLower.includes('ship') || categoryLower.includes('delivery') || categoryLower.includes('arrive')) {
+          return "Shipping & Delivery";
+        }
+        if (categoryLower.includes('packag') || categoryLower.includes('box')) {
+          return "Packaging";
+        }
+        if (categoryLower.includes('service') || categoryLower.includes('support') || categoryLower.includes('response')) {
+          return "Customer Service";
+        }
+        if (categoryLower.includes('price') || categoryLower.includes('value') || categoryLower.includes('cost') || categoryLower.includes('expensive')) {
+          return "Value & Pricing";
+        }
+        if (categoryLower.includes('size') || categoryLower.includes('fit')) {
+          return "Sizing & Fit";
+        }
+        if (categoryLower.includes('color') || categoryLower.includes('appearance') || categoryLower.includes('look') || categoryLower.includes('design')) {
+          return "Color & Appearance";
+        }
+        if (categoryLower.includes('setup') || categoryLower.includes('install') || categoryLower.includes('instruction') || categoryLower.includes('assemble')) {
+          return "Setup & Instructions";
+        }
+        if (categoryLower.includes('compat') || categoryLower.includes('work with')) {
+          return "Compatibility";
+        }
+        if (categoryLower.includes('safe') || categoryLower.includes('hazard') || categoryLower.includes('danger')) {
+          return "Safety Concern";
+        }
+        if (categoryLower.includes('great') || categoryLower.includes('love') || categoryLower.includes('recommend') || 
+            categoryLower.includes('praise') || categoryLower.includes('satisfied') || categoryLower.includes('happy') ||
+            categoryLower.includes('excellent') || categoryLower.includes('perfect') || categoryLower.includes('feature')) {
+          return "Praise & Satisfaction";
+        }
+        
+        // Default fallback based on sentiment if no match
+        return "Product Performance";
+      };
+
+      // Calculate category distribution with standardized mapping
       const categoryCounts = filteredReviews.reduce((acc, r) => {
-        acc[r.category] = (acc[r.category] || 0) + 1;
+        const standardCategory = mapToStandardCategory(r.category);
+        acc[standardCategory] = (acc[standardCategory] || 0) + 1;
         return acc;
       }, {} as Record<string, number>);
 
@@ -977,29 +1047,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return acc;
       }, {} as Record<string, number>);
 
-      // Calculate weekly sentiment trends (last 12 weeks)
+      // Calculate weekly sentiment trends based on actual review dates (using reviewDate, not createdAt)
       const weeklyTrends: Record<string, { positive: number; neutral: number; negative: number }> = {};
-      const now = new Date();
       
-      for (let i = 11; i >= 0; i--) {
-        const weekStart = new Date(now);
-        weekStart.setDate(weekStart.getDate() - (i * 7));
-        weekStart.setHours(0, 0, 0, 0);
+      // Group reviews by their actual review week
+      filteredReviews.forEach(r => {
+        // Use the review creation date
+        const reviewDate = new Date(r.createdAt);
         
-        const weekEnd = new Date(weekStart);
-        weekEnd.setDate(weekEnd.getDate() + 6);
-        weekEnd.setHours(23, 59, 59, 999);
+        // Get start of week (Sunday)
+        const startOfWeek = new Date(reviewDate);
+        startOfWeek.setDate(reviewDate.getDate() - reviewDate.getDay());
+        startOfWeek.setHours(0, 0, 0, 0);
         
-        const weekKey = `Week ${12 - i}`;
-        weeklyTrends[weekKey] = { positive: 0, neutral: 0, negative: 0 };
+        // Format as readable date range (e.g., "Nov 17-23")
+        const endOfWeek = new Date(startOfWeek);
+        endOfWeek.setDate(endOfWeek.getDate() + 6);
         
-        filteredReviews.forEach(r => {
-          const reviewDate = new Date(r.createdAt);
-          if (reviewDate >= weekStart && reviewDate <= weekEnd) {
-            weeklyTrends[weekKey][r.sentiment as 'positive' | 'neutral' | 'negative']++;
-          }
-        });
-      }
+        const weekKey = `${startOfWeek.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}-${endOfWeek.getDate()}`;
+        
+        if (!weeklyTrends[weekKey]) {
+          weeklyTrends[weekKey] = { positive: 0, neutral: 0, negative: 0 };
+        }
+        
+        weeklyTrends[weekKey][r.sentiment as 'positive' | 'neutral' | 'negative']++;
+      });
+      
+      // Sort weeks chronologically and limit to last 12 weeks with data
+      const sortedWeeks = Object.keys(weeklyTrends).sort((a, b) => {
+        const parseWeekStart = (key: string) => {
+          const [monthDay] = key.split('-');
+          return new Date(`${monthDay} ${new Date().getFullYear()}`);
+        };
+        return parseWeekStart(a).getTime() - parseWeekStart(b).getTime();
+      }).slice(-12);
+      
+      // Rebuild sorted trends object
+      const sortedTrends: Record<string, { positive: number; neutral: number; negative: number }> = {};
+      sortedWeeks.forEach(week => {
+        sortedTrends[week] = weeklyTrends[week];
+      });
 
       // Calculate stats
       const totalReviews = filteredReviews.length;
@@ -1027,7 +1114,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         severityCounts,
         ratingCounts,
         statusCounts,
-        weeklyTrends,
+        weeklyTrends: sortedTrends,
       });
     } catch (error: any) {
       console.error("Failed to fetch analytics:", error);
