@@ -31,6 +31,8 @@ export interface IStorage {
   createProduct(product: InsertProduct): Promise<Product>;
   updateProductLastImported(id: string): Promise<void>;
   getReviewCountForProduct(platform: string, productId: string, userId?: string): Promise<number>;
+  deleteProduct(productId: string, userId?: string): Promise<boolean>;
+  deleteReviewsForProduct(platform: string, productId: string, userId?: string): Promise<number>;
 }
 
 export class MemStorage implements IStorage {
@@ -98,6 +100,14 @@ export class MemStorage implements IStorage {
   }
 
   async getReviewCountForProduct(platform: string, productId: string, userId?: string): Promise<number> {
+    return 0;
+  }
+
+  async deleteProduct(productId: string, userId?: string): Promise<boolean> {
+    return false;
+  }
+
+  async deleteReviewsForProduct(platform: string, productId: string, userId?: string): Promise<number> {
     return 0;
   }
 }
@@ -228,6 +238,36 @@ export class DBStorage implements IStorage {
       .where(and(...conditions));
     
     return Number(result[0]?.count || 0);
+  }
+
+  async deleteProduct(productId: string, userId?: string): Promise<boolean> {
+    const conditions = [eq(products.id, productId)];
+    if (userId) {
+      conditions.push(eq(products.userId, userId));
+    }
+    
+    const result = await db.delete(products)
+      .where(and(...conditions))
+      .returning();
+    
+    return result.length > 0;
+  }
+
+  async deleteReviewsForProduct(platform: string, productId: string, userId?: string): Promise<number> {
+    const conditions = [
+      eq(reviews.marketplace, platform),
+      eq(reviews.productId, productId)
+    ];
+    
+    if (userId) {
+      conditions.push(eq(reviews.userId, userId));
+    }
+    
+    const result = await db.delete(reviews)
+      .where(and(...conditions))
+      .returning();
+    
+    return result.length;
   }
 }
 
