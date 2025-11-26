@@ -1040,20 +1040,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Fetch latest reviews based on platform
       if (platform === "Amazon") {
-        // Try Outscraper first (better pagination, 500 free reviews/month)
-        // Fall back to Axesso if Outscraper is not configured
-        const { isOutscraperConfigured, getAmazonReviews, convertOutscraperReview } = await import("./integrations/outscraper");
+        // Try Apify first (supports amazon.ca, amazon.com, etc. with pagination)
+        // Fall back to Axesso if Apify is not configured
+        const { isApifyConfigured, getAmazonReviews, convertApifyReview } = await import("./integrations/apify");
         const { getProductReviews } = await import("./integrations/axesso");
         
         let reviewsToProcess: Array<any> = [];
         
-        if (isOutscraperConfigured()) {
-          console.log("Using Outscraper for Amazon reviews...");
+        if (isApifyConfigured()) {
+          console.log("Using Apify for Amazon reviews...");
           try {
             const { reviews } = await getAmazonReviews(productId, 100);
             
             for (const review of reviews) {
-              const converted = convertOutscraperReview(review);
+              const converted = convertApifyReview(review);
               const exists = await storage.checkReviewExists(converted.externalReviewId, "Amazon", userId);
               if (exists) {
                 skippedCount++;
@@ -1069,12 +1069,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
               });
             }
           } catch (error) {
-            console.error("Outscraper failed, falling back to Axesso:", error);
+            console.error("Apify failed, falling back to Axesso:", error);
             reviewsToProcess = [];
           }
         }
         
-        // Fallback to Axesso if Outscraper not configured or failed
+        // Fallback to Axesso if Apify not configured or failed
         if (reviewsToProcess.length === 0 && skippedCount === 0) {
           console.log("Using Axesso for Amazon reviews (limited to ~8 reviews)...");
           const result = await getProductReviews(productId);
