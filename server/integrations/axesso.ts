@@ -146,64 +146,20 @@ export async function searchProducts(keyword: string, page: number = 1): Promise
 
 /**
  * Get product details and reviews by Amazon URL or ASIN
- * Uses pagination to fetch multiple pages of reviews
+ * Note: Axesso API only returns ~8 reviews bundled with product lookup
  * @param asinOrUrl - Amazon product URL or ASIN
- * @param maxPages - Number of pages to fetch (default 3, each page ~10 reviews)
  */
-export async function getProductReviews(asinOrUrl: string, maxPages: number = 3): Promise<{ reviews: AxessoReview[], productTitle?: string }> {
+export async function getProductReviews(asinOrUrl: string): Promise<{ reviews: AxessoReview[], productTitle?: string }> {
   // Convert ASIN to Amazon URL format
   const url = asinOrUrl.startsWith('http') 
     ? asinOrUrl 
     : `https://www.amazon.com/dp/${asinOrUrl}`;
   
-  const allReviews: AxessoReview[] = [];
-  let productTitle: string | undefined;
-  
-  // Try fetching multiple pages of reviews
-  for (let page = 1; page <= maxPages; page++) {
-    try {
-      console.log(`Fetching Amazon reviews page ${page}...`);
-      
-      const reviewsResult = await axessoRequest<any>('/amz/amazon-lookup-reviews', { 
-        url,
-        sortBy: 'recent',
-        page: page.toString()
-      });
-      
-      if (!productTitle && reviewsResult.productTitle) {
-        productTitle = reviewsResult.productTitle;
-      }
-      
-      if (reviewsResult.reviews && reviewsResult.reviews.length > 0) {
-        console.log(`Page ${page}: Got ${reviewsResult.reviews.length} reviews`);
-        allReviews.push(...reviewsResult.reviews);
-      } else {
-        console.log(`Page ${page}: No more reviews, stopping pagination`);
-        break; // No more reviews, stop fetching
-      }
-    } catch (error) {
-      console.log(`Page ${page} failed:`, error);
-      if (page === 1) {
-        // If first page fails, try fallback
-        break;
-      }
-      // For subsequent pages, just stop pagination
-      break;
-    }
-  }
-  
-  // If we got reviews from pagination, return them
-  if (allReviews.length > 0) {
-    console.log(`Total reviews fetched via pagination: ${allReviews.length}`);
-    return { reviews: allReviews, productTitle };
-  }
-  
-  // Fallback to the product lookup endpoint (limited to ~8 reviews)
-  console.log('Falling back to product lookup endpoint...');
+  // Use product lookup endpoint (returns ~8 reviews bundled with product data)
   const result = await axessoRequest<any>('/amz/amazon-lookup-product', { url });
   
   const reviews = result.reviews || [];
-  console.log(`Axesso product lookup returned ${reviews.length} reviews`);
+  console.log(`Axesso: Fetched ${reviews.length} Amazon reviews for product`);
   
   return { 
     reviews,
