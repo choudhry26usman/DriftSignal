@@ -15,6 +15,7 @@ import WorkflowManagement from "@/pages/WorkflowManagement";
 import Analytics from "@/pages/Analytics";
 import Settings from "@/pages/Settings";
 import Account from "@/pages/Account";
+import FAQ from "@/pages/FAQ";
 import { Loader2 } from "lucide-react";
 
 function AuthenticatedRouter() {
@@ -26,6 +27,7 @@ function AuthenticatedRouter() {
       <Route path="/analytics" component={Analytics} />
       <Route path="/settings" component={Settings} />
       <Route path="/account" component={Account} />
+      <Route path="/faq" component={FAQ} />
       <Route component={NotFound} />
     </Switch>
   );

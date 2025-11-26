@@ -1,4 +1,4 @@
-import { LayoutDashboard, Workflow, BarChart3, Upload, Filter, Settings, Mail, Grid, LogOut, User } from "lucide-react";
+import { LayoutDashboard, Workflow, BarChart3, Upload, Filter, Settings, Mail, Grid, LogOut, User, HelpCircle } from "lucide-react";
 import { SiAmazon, SiShopify, SiWalmart } from "react-icons/si";
 import { Link, useLocation } from "wouter";
 import { useState, useMemo } from "react";
@@ -34,6 +34,7 @@ const mainMenuItems = [
   { title: "Workflow Management", url: "/workflow", icon: Workflow, testId: "link-workflow" },
   { title: "Analytics", url: "/analytics", icon: BarChart3, testId: "link-analytics" },
   { title: "Settings", url: "/settings", icon: Settings, testId: "link-settings" },
+  { title: "Help & FAQ", url: "/faq", icon: HelpCircle, testId: "link-faq" },
 ];
 
 const marketplaces = [
