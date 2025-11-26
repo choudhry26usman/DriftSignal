@@ -24,33 +24,54 @@ interface SentimentTrendChartProps {
 export function SentimentTrendChart({ data }: SentimentTrendChartProps) {
   const chartData = Object.entries(data).map(([week, counts]) => ({
     week,
-    positive: counts.positive,
-    neutral: counts.neutral,
-    negative: counts.negative,
+    positive: Math.round(counts.positive),
+    neutral: Math.round(counts.neutral),
+    negative: Math.round(counts.negative),
   }));
+
+  if (chartData.length === 0) {
+    return (
+      <Card data-testid="chart-sentiment-trend">
+        <CardHeader>
+          <CardTitle>Sentiment Trends</CardTitle>
+        </CardHeader>
+        <CardContent className="flex items-center justify-center h-[300px]">
+          <p className="text-muted-foreground text-sm">No review data available for trends</p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card data-testid="chart-sentiment-trend">
       <CardHeader>
-        <CardTitle>Sentiment Trends (Weekly)</CardTitle>
+        <CardTitle>Sentiment Trends</CardTitle>
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={300}>
-          <LineChart data={chartData}>
+          <LineChart data={chartData} margin={{ bottom: 20 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-            <XAxis dataKey="week" stroke="hsl(var(--muted-foreground))" tick={{ fontSize: 11 }} />
-            <YAxis stroke="hsl(var(--muted-foreground))" />
+            <XAxis 
+              dataKey="week" 
+              stroke="hsl(var(--muted-foreground))" 
+              tick={{ fontSize: 10 }}
+              angle={-30}
+              textAnchor="end"
+              height={50}
+            />
+            <YAxis stroke="hsl(var(--muted-foreground))" allowDecimals={false} />
             <Tooltip 
               contentStyle={{ 
                 backgroundColor: "hsl(var(--popover))", 
                 border: "1px solid hsl(var(--border))",
                 borderRadius: "6px"
-              }} 
+              }}
+              formatter={(value: number) => [Math.round(value), '']}
             />
             <Legend />
-            <Line type="monotone" dataKey="positive" stroke="hsl(var(--chart-2))" strokeWidth={2} />
-            <Line type="monotone" dataKey="neutral" stroke="hsl(var(--chart-3))" strokeWidth={2} />
-            <Line type="monotone" dataKey="negative" stroke="hsl(var(--destructive))" strokeWidth={2} />
+            <Line type="monotone" dataKey="positive" stroke="hsl(var(--chart-2))" strokeWidth={2} dot={{ r: 4 }} />
+            <Line type="monotone" dataKey="neutral" stroke="hsl(var(--chart-3))" strokeWidth={2} dot={{ r: 4 }} />
+            <Line type="monotone" dataKey="negative" stroke="hsl(var(--destructive))" strokeWidth={2} dot={{ r: 4 }} />
           </LineChart>
         </ResponsiveContainer>
       </CardContent>
@@ -65,8 +86,9 @@ interface CategoryDistributionChartProps {
 export function CategoryDistributionChart({ data }: CategoryDistributionChartProps) {
   const chartData = Object.entries(data).map(([category, count]) => ({
     category: category.charAt(0).toUpperCase() + category.slice(1),
+    shortCategory: category.length > 12 ? category.substring(0, 10) + '...' : category,
     count,
-  })).sort((a, b) => b.count - a.count);
+  })).sort((a, b) => b.count - a.count).slice(0, 8);
 
   return (
     <Card data-testid="chart-category-distribution">
@@ -75,16 +97,26 @@ export function CategoryDistributionChart({ data }: CategoryDistributionChartPro
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={300}>
-          <BarChart data={chartData}>
+          <BarChart data={chartData} margin={{ bottom: 60 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-            <XAxis dataKey="category" stroke="hsl(var(--muted-foreground))" />
-            <YAxis stroke="hsl(var(--muted-foreground))" />
+            <XAxis 
+              dataKey="shortCategory" 
+              stroke="hsl(var(--muted-foreground))" 
+              tick={{ fontSize: 10 }}
+              angle={-45}
+              textAnchor="end"
+              height={60}
+              interval={0}
+            />
+            <YAxis stroke="hsl(var(--muted-foreground))" allowDecimals={false} />
             <Tooltip 
               contentStyle={{ 
                 backgroundColor: "hsl(var(--popover))", 
                 border: "1px solid hsl(var(--border))",
                 borderRadius: "6px"
-              }} 
+              }}
+              formatter={(value: number) => [value, 'Count']}
+              labelFormatter={(label: string, payload: any[]) => payload?.[0]?.payload?.category || label}
             />
             <Bar dataKey="count" fill="hsl(var(--chart-1))" />
           </BarChart>
@@ -144,7 +176,7 @@ interface RatingDistributionChartProps {
 export function RatingDistributionChart({ data }: RatingDistributionChartProps) {
   const chartData = [1, 2, 3, 4, 5].map(rating => ({
     rating: `${rating} ★`,
-    count: data[rating] || 0,
+    count: Math.round(data[rating] || 0),
   }));
 
   return (
@@ -156,14 +188,15 @@ export function RatingDistributionChart({ data }: RatingDistributionChartProps) 
         <ResponsiveContainer width="100%" height={300}>
           <BarChart data={chartData}>
             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-            <XAxis dataKey="rating" stroke="hsl(var(--muted-foreground))" />
-            <YAxis stroke="hsl(var(--muted-foreground))" />
+            <XAxis dataKey="rating" stroke="hsl(var(--muted-foreground))" tick={{ fontSize: 12 }} />
+            <YAxis stroke="hsl(var(--muted-foreground))" allowDecimals={false} />
             <Tooltip 
               contentStyle={{ 
                 backgroundColor: "hsl(var(--popover))", 
                 border: "1px solid hsl(var(--border))",
                 borderRadius: "6px"
-              }} 
+              }}
+              formatter={(value: number) => [Math.round(value), 'Reviews']}
             />
             <Bar dataKey="count" fill="hsl(var(--chart-4))" />
           </BarChart>

@@ -91,7 +91,7 @@ export function WorkflowBoard({ columns: initialColumns, onReviewMove, onCardCli
 
   return (
     <DragDropContext onDragEnd={onDragEnd}>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
         {columns.map((column) => (
           <div key={column.id} className="flex flex-col">
             <div className="mb-4 flex items-center justify-between">
@@ -105,7 +105,7 @@ export function WorkflowBoard({ columns: initialColumns, onReviewMove, onCardCli
                   ref={provided.innerRef}
                   {...provided.droppableProps}
                   className={cn(
-                    "flex-1 space-y-3 rounded-md p-4 min-h-[500px]",
+                    "flex-1 space-y-3 rounded-md p-3 sm:p-4 min-h-[300px] lg:min-h-[500px]",
                     getColumnColor(column.id, snapshot.isDraggingOver)
                   )}
                   data-testid={`column-${column.id}`}
@@ -137,10 +137,10 @@ export function WorkflowBoard({ columns: initialColumns, onReviewMove, onCardCli
                                     <span className="text-xs text-muted-foreground">{review.marketplace}</span>
                                   </div>
                                   <div className="flex items-center gap-1.5">
-                                    {review.rating !== undefined && (
+                                    {review.rating !== undefined && review.rating !== null && (
                                       <div className="flex items-center gap-0.5">
                                         <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                                        <span className="text-xs font-medium">{review.rating}</span>
+                                        <span className="text-xs font-medium">{Math.round(review.rating)}</span>
                                       </div>
                                     )}
                                     {SentimentIcon && (

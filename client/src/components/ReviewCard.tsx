@@ -97,10 +97,10 @@ export function ReviewCard({
             <SentimentIcon className="h-4 w-4" />
             <span className="text-sm font-medium capitalize">{sentiment}</span>
           </div>
-          {rating && (
+          {rating !== undefined && rating !== null && (
             <div className="flex items-center gap-1">
               <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-              <span className="text-sm font-medium">{rating}/5</span>
+              <span className="text-sm font-medium">{Math.round(rating)}/5</span>
             </div>
           )}
         </div>
