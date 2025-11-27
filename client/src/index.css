@@ -304,3 +304,141 @@
     inset: -1px;
   }
 }
+
+/* Shepherd.js Tour Custom Styles */
+.shepherd-element {
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.75rem;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+  max-width: 400px;
+  z-index: 10000;
+}
+
+.shepherd-content {
+  padding: 0;
+}
+
+.shepherd-header {
+  background: hsl(var(--primary) / 0.05);
+  border-bottom: 1px solid hsl(var(--border));
+  padding: 1rem 1.25rem;
+  border-radius: 0.75rem 0.75rem 0 0;
+}
+
+.shepherd-title {
+  color: hsl(var(--foreground));
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.shepherd-cancel-icon {
+  color: hsl(var(--muted-foreground));
+  font-size: 1.5rem;
+  font-weight: 300;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.shepherd-cancel-icon:hover {
+  color: hsl(var(--foreground));
+}
+
+.shepherd-text {
+  color: hsl(var(--foreground));
+  font-size: 0.9rem;
+  line-height: 1.6;
+  padding: 1rem 1.25rem;
+}
+
+.shepherd-text p {
+  margin: 0;
+}
+
+.shepherd-text ul {
+  margin: 0.5rem 0 0 0;
+  padding-left: 1.25rem;
+}
+
+.shepherd-text li {
+  margin: 0.25rem 0;
+}
+
+.shepherd-footer {
+  border-top: 1px solid hsl(var(--border));
+  padding: 0.75rem 1.25rem;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.shepherd-button {
+  background: hsl(var(--primary));
+  border: none;
+  border-radius: 0.5rem;
+  color: hsl(var(--primary-foreground));
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+  padding: 0.5rem 1rem;
+  transition: all 0.2s;
+}
+
+.shepherd-button:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+.shepherd-button.shepherd-button-secondary {
+  background: hsl(var(--secondary));
+  color: hsl(var(--secondary-foreground));
+}
+
+.shepherd-button.shepherd-button-secondary:hover {
+  background: hsl(var(--muted));
+}
+
+.shepherd-modal-overlay-container {
+  z-index: 9999;
+}
+
+.shepherd-modal-overlay-container .shepherd-modal-mask-rect {
+  fill: rgba(0, 0, 0, 0.5);
+}
+
+.shepherd-arrow,
+.shepherd-arrow:before {
+  background: hsl(var(--card));
+}
+
+.shepherd-element[data-popper-placement^='top'] > .shepherd-arrow {
+  bottom: -8px;
+}
+
+.shepherd-element[data-popper-placement^='bottom'] > .shepherd-arrow {
+  top: -8px;
+}
+
+.shepherd-element[data-popper-placement^='left'] > .shepherd-arrow {
+  right: -8px;
+}
+
+.shepherd-element[data-popper-placement^='right'] > .shepherd-arrow {
+  left: -8px;
+}
+
+/* Dark mode support for tour */
+.dark .shepherd-element {
+  background: hsl(var(--card));
+  border-color: hsl(var(--border));
+}
+
+.dark .shepherd-header {
+  background: hsl(var(--primary) / 0.1);
+}
+
+.dark .shepherd-arrow,
+.dark .shepherd-arrow:before {
+  background: hsl(var(--card));
+}
