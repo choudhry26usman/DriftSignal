@@ -7,6 +7,7 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { AppSidebar } from "@/components/app-sidebar";
+import { TourProvider } from "@/components/TourProvider";
 import { useAuth } from "@/hooks/useAuth";
 import NotFound from "@/pages/not-found";
 import Landing from "@/pages/Landing";
@@ -86,10 +87,12 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
-        <TooltipProvider>
-          <AppRouter />
-          <Toaster />
-        </TooltipProvider>
+        <TourProvider>
+          <TooltipProvider>
+            <AppRouter />
+            <Toaster />
+          </TooltipProvider>
+        </TourProvider>
       </ThemeProvider>
     </QueryClientProvider>
   );

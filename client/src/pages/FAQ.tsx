@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { 
   HelpCircle, 
@@ -17,9 +18,11 @@ import {
   Mail,
   Filter,
   RefreshCw,
-  Trash2
+  Trash2,
+  Play
 } from "lucide-react";
 import { SiAmazon, SiShopify, SiWalmart } from "react-icons/si";
+import { useTour } from "@/hooks/use-tour";
 
 const gettingStartedSteps = [
   {
@@ -191,17 +194,28 @@ const troubleshootingItems = [
 
 export default function FAQ() {
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
+  const { startTour } = useTour();
 
   return (
     <div className="p-6 space-y-8 max-w-4xl mx-auto">
-      <div>
-        <h1 className="text-2xl font-semibold flex items-center gap-2">
-          <HelpCircle className="h-6 w-6 text-primary" />
-          Help & FAQ
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Learn how to use DriftSignal to manage your marketplace reviews effectively
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold flex items-center gap-2">
+            <HelpCircle className="h-6 w-6 text-primary" />
+            Help & FAQ
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            Learn how to use DriftSignal to manage your marketplace reviews effectively
+          </p>
+        </div>
+        <Button 
+          onClick={startTour}
+          className="flex items-center gap-2 whitespace-nowrap"
+          data-testid="button-start-tour"
+        >
+          <Play className="h-4 w-4" />
+          Start Tour
+        </Button>
       </div>
 
       <Card>
