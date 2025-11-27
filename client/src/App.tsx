@@ -3,12 +3,15 @@ import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { AppSidebar } from "@/components/app-sidebar";
 import { TourProvider } from "@/components/TourProvider";
+import { useTour } from "@/hooks/use-tour";
 import { useAuth } from "@/hooks/useAuth";
+import { Button } from "@/components/ui/button";
 import NotFound from "@/pages/not-found";
 import Landing from "@/pages/Landing";
 import Dashboard from "@/pages/Dashboard";
@@ -17,7 +20,29 @@ import Analytics from "@/pages/Analytics";
 import Settings from "@/pages/Settings";
 import Account from "@/pages/Account";
 import FAQ from "@/pages/FAQ";
-import { Loader2 } from "lucide-react";
+import { Loader2, HelpCircle } from "lucide-react";
+
+function TourButton() {
+  const { startTour } = useTour();
+  
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          onClick={startTour}
+          data-testid="button-start-tour-header"
+        >
+          <HelpCircle className="h-5 w-5" />
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>
+        <p>Tour</p>
+      </TooltipContent>
+    </Tooltip>
+  );
+}
 
 function AuthenticatedRouter() {
   return (
@@ -47,7 +72,10 @@ function MainLayout() {
         <div className="flex flex-col flex-1">
           <header className="flex items-center justify-between p-4 border-b">
             <SidebarTrigger data-testid="button-sidebar-toggle" />
-            <ThemeToggle />
+            <div className="flex items-center gap-1">
+              <TourButton />
+              <ThemeToggle />
+            </div>
           </header>
           <main className="flex-1 overflow-auto">
             <AuthenticatedRouter />
