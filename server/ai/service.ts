@@ -333,3 +333,137 @@ What product or service is this email about?`;
     };
   }
 }
+
+// Combined email processing result interface
+export interface CombinedEmailProcessingResult {
+  // Classification
+  isReviewOrComplaint: boolean;
+  classificationConfidence: number;
+  // Product extraction
+  productName: string | null;
+  productId: string | null;
+  productConfidence: number;
+  // Review analysis
+  sentiment: "positive" | "negative" | "neutral";
+  severity: "low" | "medium" | "high" | "critical";
+  category: string;
+  reasoning: string;
+  specificIssues: string[];
+  positiveAspects: string[];
+  keyPhrases: string[];
+  customerEmotion: string;
+  urgencyLevel: string;
+  recommendedActions: string[];
+  // Reply
+  suggestedReply: string;
+}
+
+// Optimized single-call function for email processing
+export async function processEmailComplete(
+  emailSubject: string,
+  emailBody: string,
+  senderName: string
+): Promise<CombinedEmailProcessingResult> {
+  const systemPrompt = `You are an AI assistant for a customer review management system. Analyze the incoming email and provide a comprehensive response in a single JSON object.
+
+Your tasks:
+1. CLASSIFY: Determine if this is a customer review/complaint (vs marketing, notifications, spam)
+2. EXTRACT PRODUCT: Identify the product being discussed
+3. ANALYZE: Determine sentiment, severity, category, and detailed analysis
+4. REPLY: Generate a professional customer service response
+
+Category MUST be one of:
+- "Product Quality", "Product Performance", "Shipping & Delivery", "Packaging"
+- "Customer Service", "Value & Pricing", "Sizing & Fit", "Color & Appearance"
+- "Setup & Instructions", "Compatibility", "Safety Concern", "Praise & Satisfaction"
+
+Respond with a single JSON object containing ALL fields:
+{
+  "isReviewOrComplaint": boolean,
+  "classificationConfidence": 0-100,
+  "productName": string or null,
+  "productId": "lowercase-hyphenated-max30chars" or null,
+  "productConfidence": 0-100,
+  "sentiment": "positive" | "negative" | "neutral",
+  "severity": "low" | "medium" | "high" | "critical",
+  "category": one of the standard categories,
+  "reasoning": "brief analysis explanation",
+  "specificIssues": ["issue1", "issue2"],
+  "positiveAspects": ["positive1", "positive2"],
+  "keyPhrases": ["quote1", "quote2", "quote3"],
+  "customerEmotion": "frustrated" | "disappointed" | "satisfied" | etc,
+  "urgencyLevel": "immediate" | "moderate" | "low",
+  "recommendedActions": ["action1", "action2"],
+  "suggestedReply": "Professional 2-4 sentence response to the customer"
+}`;
+
+  const userPrompt = `Process this email from ${senderName}:
+
+Subject: "${emailSubject}"
+Body: "${emailBody.substring(0, 1500)}"
+
+Provide complete analysis in JSON format.`;
+
+  const response = await callOpenRouter({
+    model: "x-ai/grok-4.1-fast",
+    messages: [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userPrompt },
+    ],
+    temperature: 0.3,
+    max_tokens: 800,
+  });
+
+  try {
+    const jsonMatch = response.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      throw new Error("No JSON found in response");
+    }
+    
+    const parsed = JSON.parse(jsonMatch[0]);
+    
+    let productId = parsed.productId || null;
+    if (productId) {
+      productId = productId.toLowerCase().replace(/[^a-z0-9-]/g, '-').substring(0, 30);
+    }
+    
+    return {
+      isReviewOrComplaint: parsed.isReviewOrComplaint || false,
+      classificationConfidence: parsed.classificationConfidence || 0,
+      productName: parsed.productName || null,
+      productId: productId,
+      productConfidence: parsed.productConfidence || 0,
+      sentiment: parsed.sentiment || "neutral",
+      severity: parsed.severity || "medium",
+      category: parsed.category || "general",
+      reasoning: parsed.reasoning || "",
+      specificIssues: parsed.specificIssues || [],
+      positiveAspects: parsed.positiveAspects || [],
+      keyPhrases: parsed.keyPhrases || [],
+      customerEmotion: parsed.customerEmotion || "neutral",
+      urgencyLevel: parsed.urgencyLevel || "moderate",
+      recommendedActions: parsed.recommendedActions || [],
+      suggestedReply: parsed.suggestedReply || "",
+    };
+  } catch (error) {
+    console.error("Failed to parse combined AI response:", error);
+    return {
+      isReviewOrComplaint: false,
+      classificationConfidence: 0,
+      productName: null,
+      productId: null,
+      productConfidence: 0,
+      sentiment: "neutral",
+      severity: "medium",
+      category: "general",
+      reasoning: "Failed to process email",
+      specificIssues: [],
+      positiveAspects: [],
+      keyPhrases: [],
+      customerEmotion: "neutral",
+      urgencyLevel: "moderate",
+      recommendedActions: [],
+      suggestedReply: "",
+    };
+  }
+}

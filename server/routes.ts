@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { getUncachableOutlookClient } from "./integrations/outlook";
 import { testAxessoConnection } from "./integrations/axesso";
 import { testWalmartConnection } from "./integrations/walmart";
-import { analyzeReview, generateReply, classifyEmail, extractProductFromEmail } from "./ai/service";
+import { analyzeReview, generateReply, classifyEmail, extractProductFromEmail, processEmailComplete } from "./ai/service";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { z } from "zod";
@@ -251,36 +251,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
           continue;
         }
         
-        // Use AI to classify if this is a review/complaint
-        const classification = await classifyEmail(subject, emailBody, senderName);
+        // Check for duplicates FIRST (before AI call) to save time
+        const externalReviewId = `outlook-${msg.id}`;
+        const existingReview = await storage.checkReviewExists(externalReviewId, 'Mailbox', userId);
         
-        console.log(`Email "${subject}" - Review: ${classification.isReviewOrComplaint} (${classification.confidence}% confidence)`);
+        if (existingReview) {
+          console.log(`Skipping duplicate review: ${subject}`);
+          skipped++;
+          continue;
+        }
         
-        if (classification.isReviewOrComplaint && classification.confidence > 50) {
-          // Check for duplicates using email ID
-          const externalReviewId = `outlook-${msg.id}`;
-          const existingReview = await storage.checkReviewExists(externalReviewId, 'Mailbox', userId);
-          
-          if (existingReview) {
-            console.log(`Skipping duplicate review: ${subject}`);
-            skipped++;
-            continue;
-          }
-          
-          // Analyze the review content
-          const analysis = await analyzeReview(emailBody, senderName, 'Email');
-          
-          // Extract product information from email
-          const productExtraction = await extractProductFromEmail(subject, emailBody);
-          console.log(`Product extraction: ${productExtraction.productName} (${productExtraction.productId}) - ${productExtraction.confidence}% confidence`);
+        // Use SINGLE optimized AI call for complete email processing
+        // This combines: classification + product extraction + analysis + reply generation
+        const result = await processEmailComplete(subject, emailBody, senderName);
+        
+        console.log(`Email "${subject}" - Review: ${result.isReviewOrComplaint} (${result.classificationConfidence}% confidence)`);
+        
+        if (result.isReviewOrComplaint && result.classificationConfidence > 50) {
+          console.log(`Product extraction: ${result.productName} (${result.productId}) - ${result.productConfidence}% confidence`);
           
           // Determine productId and productName
           let productId = 'email-general';
           let productName = 'General Email Inquiry';
           
-          if (productExtraction.productId && productExtraction.confidence >= 50) {
-            productId = productExtraction.productId;
-            productName = productExtraction.productName || productExtraction.productId;
+          if (result.productId && result.productConfidence >= 50) {
+            productId = result.productId;
+            productName = result.productName || result.productId;
             
             // Check if this product already exists for this user
             const existingProduct = await storage.getProductByIdentifier('Mailbox', productId, userId);
@@ -297,14 +293,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
           }
           
-          // Generate AI reply
-          const aiReply = await generateReply(
-            emailBody,
-            senderName,
-            'Email',
-            analysis.sentiment,
-            analysis.severity
-          );
+          // Build analysis details from the combined result
+          const analysisDetails = {
+            sentiment: result.sentiment,
+            severity: result.severity,
+            category: result.category,
+            reasoning: result.reasoning,
+            specificIssues: result.specificIssues,
+            positiveAspects: result.positiveAspects,
+            keyPhrases: result.keyPhrases,
+            customerEmotion: result.customerEmotion,
+            urgencyLevel: result.urgencyLevel,
+            recommendedActions: result.recommendedActions,
+          };
           
           // Import as review (with userId)
           const newReview = await storage.createReview({
@@ -316,14 +317,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
             content: emailBody.substring(0, 5000), // Limit content length
             customerName: senderName,
             customerEmail: senderEmail,
-            rating: analysis.sentiment === 'positive' ? 5 : analysis.sentiment === 'negative' ? 1 : 3,
-            sentiment: analysis.sentiment,
-            category: analysis.category,
-            severity: analysis.severity,
+            rating: result.sentiment === 'positive' ? 5 : result.sentiment === 'negative' ? 1 : 3,
+            sentiment: result.sentiment,
+            category: result.category,
+            severity: result.severity,
             createdAt: new Date(msg.receivedDateTime),
             status: 'open',
-            aiSuggestedReply: aiReply,
-            aiAnalysisDetails: JSON.stringify(analysis),
+            aiSuggestedReply: result.suggestedReply,
+            aiAnalysisDetails: JSON.stringify(analysisDetails),
             verified: 0,
           });
           
