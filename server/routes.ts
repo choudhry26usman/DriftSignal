@@ -1130,6 +1130,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ? reviewsWithRating.reduce((sum, r) => sum + (r.rating || 0), 0) / reviewsWithRating.length
         : 0;
 
+      // Calculate severity-status matrix
+      const severityStatusMatrix: Record<string, Record<string, number>> = {
+        critical: { open: 0, in_progress: 0, resolved: 0 },
+        high: { open: 0, in_progress: 0, resolved: 0 },
+        medium: { open: 0, in_progress: 0, resolved: 0 },
+        low: { open: 0, in_progress: 0, resolved: 0 },
+      };
+
+      filteredReviews.forEach(r => {
+        const severity = r.severity || 'low';
+        const status = r.status || 'open';
+        if (severityStatusMatrix[severity]) {
+          severityStatusMatrix[severity][status] = (severityStatusMatrix[severity][status] || 0) + 1;
+        }
+      });
+
+      // Calculate response metrics
+      const resolvedReviews = filteredReviews.filter(r => r.status === 'resolved');
+      const now = new Date();
+      const resolvedWithin48h = resolvedReviews.filter(r => {
+        const createdAt = new Date(r.createdAt);
+        const diffHours = (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60);
+        return diffHours <= 48;
+      }).length;
+
+      // Calculate average time to in_progress (approximate based on current status)
+      const inProgressReviews = filteredReviews.filter(r => r.status === 'in_progress' || r.status === 'resolved');
+      let avgTimeToProgress = 0;
+      if (inProgressReviews.length > 0) {
+        // Average hours from creation to now for in-progress/resolved reviews
+        const totalHours = inProgressReviews.reduce((sum, r) => {
+          const createdAt = new Date(r.createdAt);
+          return sum + Math.min((now.getTime() - createdAt.getTime()) / (1000 * 60 * 60), 72);
+        }, 0);
+        avgTimeToProgress = totalHours / inProgressReviews.length;
+      }
+
       res.json({
         stats: {
           totalReviews,
@@ -1145,6 +1182,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ratingCounts,
         statusCounts,
         weeklyTrends: sortedTrends,
+        severityStatusMatrix: {
+          severity: severityStatusMatrix,
+          totals: {
+            bySeverity: severityCounts,
+            byStatus: statusCounts,
+          },
+        },
+        responseMetrics: {
+          avgTimeToProgress,
+          resolvedWithin48h,
+          totalResolved: resolvedReviews.length,
+        },
       });
     } catch (error: any) {
       console.error("Failed to fetch analytics:", error);

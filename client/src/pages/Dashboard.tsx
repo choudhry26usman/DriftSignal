@@ -6,6 +6,11 @@ import { ReviewCard } from "@/components/ReviewCard";
 import { ReviewDetailModal } from "@/components/ReviewDetailModal";
 import { ImportReviewsModal } from "@/components/ImportReviewsModal";
 import { ImportProductModal } from "@/components/ImportProductModal";
+import { 
+  DashboardSentimentChart, 
+  DashboardSourceChart, 
+  SeverityStatusMatrix 
+} from "@/components/AnalyticsCharts";
 import { MessageSquare, TrendingUp, Clock, CheckCircle, Search, Upload, Download, Mail, RefreshCw, Loader2, Package, ShoppingCart, ExternalLink, Trash2, Calendar, X, ArrowUpDown, ChevronLeft, ChevronRight, LayoutGrid, List } from "lucide-react";
 import {
   AlertDialog,
@@ -150,6 +155,18 @@ export default function Dashboard() {
     total: number 
   }>({
     queryKey: ["/api/products/tracked"],
+  });
+
+  // Fetch analytics data for dashboard charts
+  const { data: analyticsData } = useQuery<{
+    weeklyTrends: Record<string, { positive: number; neutral: number; negative: number }>;
+    marketplaceCounts: Record<string, number>;
+    severityStatusMatrix: {
+      severity: Record<string, Record<string, number>>;
+      totals: { bySeverity: Record<string, number>; byStatus: Record<string, number> };
+    };
+  }>({
+    queryKey: ["/api/analytics"],
   });
 
   const refreshProductMutation = useMutation({
@@ -543,6 +560,55 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {/* Dashboard Infographics */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4" data-testid="dashboard-infographics">
+        <DashboardSentimentChart 
+          data={analyticsData?.weeklyTrends || {}} 
+        />
+        <DashboardSourceChart 
+          data={analyticsData?.marketplaceCounts || {}} 
+        />
+        <SeverityStatusMatrix 
+          data={analyticsData?.severityStatusMatrix || { 
+            severity: {}, 
+            totals: { bySeverity: {}, byStatus: {} } 
+          }} 
+        />
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard
+          title="Total Reviews"
+          value={metrics.totalReviews.toString()}
+          icon={MessageSquare}
+          testId="stat-total-reviews"
+          gradientClass="gradient-stat-1"
+        />
+        <StatCard
+          title="Avg. Rating"
+          value={metrics.avgRating}
+          icon={TrendingUp}
+          testId="stat-avg-rating"
+          gradientClass="gradient-stat-2"
+        />
+        <StatCard
+          title="Pending"
+          value={metrics.pending.toString()}
+          icon={Clock}
+          testId="stat-pending"
+          gradientClass="gradient-stat-3"
+        />
+        <StatCard
+          title="Resolved"
+          value={metrics.resolved.toString()}
+          icon={CheckCircle}
+          testId="stat-resolved"
+          gradientClass="gradient-stat-4"
+        />
+      </div>
+
+      {/* Tracked Products */}
       {productsData && productsData.products.length > 0 && (
         <Card data-testid="card-tracked-products">
           <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-4">
@@ -684,38 +750,7 @@ export default function Dashboard() {
         </Card>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard
-          title="Total Reviews"
-          value={metrics.totalReviews.toString()}
-          icon={MessageSquare}
-          testId="stat-total-reviews"
-          gradientClass="gradient-stat-1"
-        />
-        <StatCard
-          title="Avg. Rating"
-          value={metrics.avgRating}
-          icon={TrendingUp}
-          testId="stat-avg-rating"
-          gradientClass="gradient-stat-2"
-        />
-        <StatCard
-          title="Pending"
-          value={metrics.pending.toString()}
-          icon={Clock}
-          testId="stat-pending"
-          gradientClass="gradient-stat-3"
-        />
-        <StatCard
-          title="Resolved"
-          value={metrics.resolved.toString()}
-          icon={CheckCircle}
-          testId="stat-resolved"
-          gradientClass="gradient-stat-4"
-        />
-      </div>
-
-
+      {/* Reviews Section */}
       <div className="space-y-4">
         <div className="flex gap-2 flex-wrap items-center">
           <div className="relative flex-1 min-w-[300px]">
