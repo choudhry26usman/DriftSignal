@@ -6,7 +6,7 @@ import { ReviewCard } from "@/components/ReviewCard";
 import { ReviewDetailModal } from "@/components/ReviewDetailModal";
 import { ImportReviewsModal } from "@/components/ImportReviewsModal";
 import { ImportProductModal } from "@/components/ImportProductModal";
-import { MessageSquare, TrendingUp, Clock, CheckCircle, Search, Upload, Download, Mail, RefreshCw, Loader2, Package, ShoppingCart, ExternalLink, Trash2, Calendar, X } from "lucide-react";
+import { MessageSquare, TrendingUp, Clock, CheckCircle, Search, Upload, Download, Mail, RefreshCw, Loader2, Package, ShoppingCart, ExternalLink, Trash2, Calendar, X, ArrowUpDown } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -18,6 +18,12 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation, useSearch } from "wouter";
@@ -59,6 +65,7 @@ export default function Dashboard() {
   const [selectedStatuses, setSelectedStatuses] = useState<Status[]>([]);
   const [selectedSeverities, setSelectedSeverities] = useState<Severity[]>([]);
   const [selectedRatings, setSelectedRatings] = useState<number[]>([]);
+  const [sortBy, setSortBy] = useState<"date-desc" | "date-asc" | "severity" | "status">("date-desc");
   const { toast } = useToast();
 
   const handleClearFilters = () => {
@@ -143,10 +150,10 @@ export default function Dashboard() {
   });
 
   const refreshProductMutation = useMutation({
-    mutationFn: async ({ productId, platform }: { productId: string; platform: string }) => {
+    mutationFn: async ({ productId, platform, syncType }: { productId: string; platform: string; syncType: "quick" | "full" }) => {
       const response = await fetch("/api/products/refresh", {
         method: "POST",
-        body: JSON.stringify({ productId, platform }),
+        body: JSON.stringify({ productId, platform, syncType }),
         headers: { "Content-Type": "application/json" },
       });
       
@@ -162,8 +169,9 @@ export default function Dashboard() {
       queryClient.invalidateQueries({ queryKey: ["/api/reviews/imported"] });
       setRefreshingProductId(null);
       
+      const syncLabel = variables.syncType === "full" ? "Full Historical Sync" : "Quick Refresh";
       toast({
-        title: "Reviews Refreshed",
+        title: `${syncLabel} Complete`,
         description: data.message || `Successfully refreshed reviews for product`,
       });
     },
@@ -177,9 +185,9 @@ export default function Dashboard() {
     },
   });
 
-  const handleRefreshProduct = (productId: string, platform: string) => {
+  const handleRefreshProduct = (productId: string, platform: string, syncType: "quick" | "full") => {
     setRefreshingProductId(productId);
-    refreshProductMutation.mutate({ productId, platform });
+    refreshProductMutation.mutate({ productId, platform, syncType });
   };
 
   const deleteProductMutation = useMutation({
@@ -274,10 +282,11 @@ export default function Dashboard() {
   }, [allReviews]);
 
   const syncEmailsMutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async ({ syncType }: { syncType: "quick" | "full" }) => {
       const response = await fetch("/api/emails/sync", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ syncType }),
       });
       if (!response.ok) {
         const error = await response.json();
@@ -285,11 +294,12 @@ export default function Dashboard() {
       }
       return await response.json();
     },
-    onSuccess: (data) => {
+    onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["/api/reviews/imported"] });
       queryClient.invalidateQueries({ queryKey: ["/api/products/tracked"] });
+      const syncLabel = variables.syncType === "full" ? "Full Historical Sync" : "Quick Sync";
       toast({
-        title: "Emails Synced",
+        title: `${syncLabel} Complete`,
         description: `Imported ${data.imported} review(s) from Outlook. Skipped ${data.skipped} email(s).`,
       });
     },
@@ -302,8 +312,8 @@ export default function Dashboard() {
     },
   });
 
-  const handleSyncEmails = () => {
-    syncEmailsMutation.mutate();
+  const handleSyncEmails = (syncType: "quick" | "full") => {
+    syncEmailsMutation.mutate({ syncType });
   };
 
   const handleExportData = () => {
@@ -359,7 +369,7 @@ export default function Dashboard() {
   };
 
   const filteredReviews = useMemo(() => {
-    return allReviews.filter((review) => {
+    const filtered = allReviews.filter((review) => {
       const matchesSearch = review.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                            review.content.toLowerCase().includes(searchQuery.toLowerCase());
       
@@ -391,7 +401,26 @@ export default function Dashboard() {
       
       return matchesSearch && matchesSentiment && matchesSeverity && matchesStatus && matchesDate && matchesMarketplace && matchesProduct && matchesRating;
     });
-  }, [allReviews, searchQuery, selectedSentiments, selectedSeverities, selectedStatuses, selectedMarketplaces, selectedRatings, dateRange, selectedProduct]);
+    
+    // Sort the filtered reviews
+    const severityOrder: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
+    const statusOrder: Record<string, number> = { open: 0, in_progress: 1, resolved: 2 };
+    
+    return filtered.sort((a, b) => {
+      switch (sortBy) {
+        case "date-desc":
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        case "date-asc":
+          return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+        case "severity":
+          return (severityOrder[a.severity] ?? 3) - (severityOrder[b.severity] ?? 3);
+        case "status":
+          return (statusOrder[a.status] ?? 2) - (statusOrder[b.status] ?? 2);
+        default:
+          return 0;
+      }
+    });
+  }, [allReviews, searchQuery, selectedSentiments, selectedSeverities, selectedStatuses, selectedMarketplaces, selectedRatings, dateRange, selectedProduct, sortBy]);
 
   return (
     <div className="p-6 space-y-6">
@@ -403,15 +432,38 @@ export default function Dashboard() {
           </p>
         </div>
         <div className="flex gap-2 flex-wrap items-center">
-          <Button 
-            variant="default" 
-            onClick={handleSyncEmails}
-            disabled={syncEmailsMutation.isPending}
-            data-testid="button-sync-emails"
-          >
-            <RefreshCw className={`h-4 w-4 mr-2 ${syncEmailsMutation.isPending ? 'animate-spin' : ''}`} />
-            Sync Emails
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button 
+                variant="default" 
+                disabled={syncEmailsMutation.isPending}
+                data-testid="button-sync-emails"
+              >
+                {syncEmailsMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                )}
+                Sync Emails
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              <DropdownMenuItem
+                onClick={() => handleSyncEmails("quick")}
+                data-testid="button-quick-sync-emails"
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Quick Refresh (24 hours)
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => handleSyncEmails("full")}
+                data-testid="button-full-sync-emails"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Full Historical Sync
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Button 
             variant="default" 
             onClick={() => setIsImportProductModalOpen(true)}
@@ -519,23 +571,39 @@ export default function Dashboard() {
                             >
                               <ExternalLink className="h-4 w-4" />
                             </Button>
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleRefreshProduct(product.productId, product.platform);
-                              }}
-                              disabled={refreshingProductId === product.productId}
-                              title="Refresh reviews"
-                              data-testid={`button-refresh-${product.productId}`}
-                            >
-                              {refreshingProductId === product.productId ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <RefreshCw className="h-4 w-4" />
-                              )}
-                            </Button>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  disabled={refreshingProductId === product.productId}
+                                  title="Refresh reviews"
+                                  data-testid={`button-refresh-${product.productId}`}
+                                >
+                                  {refreshingProductId === product.productId ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <RefreshCw className="h-4 w-4" />
+                                  )}
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                                <DropdownMenuItem
+                                  onClick={() => handleRefreshProduct(product.productId, product.platform, "quick")}
+                                  data-testid={`button-quick-refresh-${product.productId}`}
+                                >
+                                  <RefreshCw className="h-4 w-4 mr-2" />
+                                  Quick Refresh
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => handleRefreshProduct(product.productId, product.platform, "full")}
+                                  data-testid={`button-full-sync-${product.productId}`}
+                                >
+                                  <Download className="h-4 w-4 mr-2" />
+                                  Full Historical Sync
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                             <Button
                               size="icon"
                               variant="ghost"
@@ -608,6 +676,19 @@ export default function Dashboard() {
               data-testid="input-search"
             />
           </div>
+          
+          <Select value={sortBy} onValueChange={(value) => setSortBy(value as typeof sortBy)}>
+            <SelectTrigger className="w-[160px]" data-testid="select-sort-dashboard">
+              <ArrowUpDown className="h-4 w-4 mr-2" />
+              <SelectValue placeholder="Sort by" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="date-desc">Newest First</SelectItem>
+              <SelectItem value="date-asc">Oldest First</SelectItem>
+              <SelectItem value="severity">Severity</SelectItem>
+              <SelectItem value="status">Status</SelectItem>
+            </SelectContent>
+          </Select>
           
           <Collapsible open={filtersOpen} onOpenChange={setFiltersOpen}>
             <CollapsibleTrigger asChild>

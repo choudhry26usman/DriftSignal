@@ -217,19 +217,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/emails/sync", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user?.claims?.sub;
+      const { syncType = "quick" } = req.body || {};
+      const isFullSync = syncType === "full";
+      
       const outlookClient = await getUncachableOutlookClient();
       
-      // Fetch recent emails from Outlook (last 24 hours recommended)
-      const oneDayAgo = new Date();
-      oneDayAgo.setDate(oneDayAgo.getDate() - 1);
+      // For full sync, fetch all available emails (up to 500)
+      // For quick sync, fetch last 24 hours only (up to 50)
+      const emailLimit = isFullSync ? 500 : 50;
       
-      const messagesResponse = await outlookClient
-        .api('/me/messages')
-        .filter(`receivedDateTime ge ${oneDayAgo.toISOString()}`)
-        .top(50)
-        .select('id,subject,from,receivedDateTime,bodyPreview,body')
-        .orderby('receivedDateTime DESC')
-        .get();
+      let messagesResponse;
+      if (isFullSync) {
+        // Full sync: fetch all emails, no date filter
+        console.log(`Full Historical Sync: Fetching up to ${emailLimit} emails...`);
+        messagesResponse = await outlookClient
+          .api('/me/messages')
+          .top(emailLimit)
+          .select('id,subject,from,receivedDateTime,bodyPreview,body')
+          .orderby('receivedDateTime DESC')
+          .get();
+      } else {
+        // Quick sync: last 24 hours only
+        const oneDayAgo = new Date();
+        oneDayAgo.setDate(oneDayAgo.getDate() - 1);
+        
+        messagesResponse = await outlookClient
+          .api('/me/messages')
+          .filter(`receivedDateTime ge ${oneDayAgo.toISOString()}`)
+          .top(emailLimit)
+          .select('id,subject,from,receivedDateTime,bodyPreview,body')
+          .orderby('receivedDateTime DESC')
+          .get();
+      }
       
       const rawEmails = Array.isArray(messagesResponse?.value) ? messagesResponse.value : [];
       console.log(`Syncing ${rawEmails.length} recent Outlook emails...`);
@@ -1211,13 +1230,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/products/refresh", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user?.claims?.sub;
-      const { productId, platform } = req.body;
+      const { productId, platform, syncType = "quick" } = req.body;
       
       if (!productId || !platform) {
         return res.status(400).json({ error: "Product ID and platform are required" });
       }
 
-      console.log(`Refreshing reviews for ${platform} product: ${productId}`);
+      const isFullSync = syncType === "full";
+      console.log(`${isFullSync ? "Full Historical Sync" : "Quick Refresh"} for ${platform} product: ${productId}`);
 
       let importedCount = 0;
       let skippedCount = 0;
@@ -1306,7 +1326,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Construct Walmart product URL
         const productUrl = `https://www.walmart.com/ip/${productId}`;
-        const result = await fetchWalmartProduct(productUrl);
+        const result = await fetchWalmartProduct(productUrl, isFullSync);
         
         if (!result.reviews || result.reviews.length === 0) {
           return res.json({ 

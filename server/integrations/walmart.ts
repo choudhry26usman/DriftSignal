@@ -68,8 +68,9 @@ function extractProductId(url: string): string | null {
 /**
  * Fetch Walmart product details and reviews by product URL using SerpApi
  * @param productUrl - Full Walmart product URL (e.g., https://www.walmart.com/ip/...")
+ * @param fullSync - If true, fetch all available pages of reviews
  */
-export async function fetchWalmartProduct(productUrl: string): Promise<WalmartProductData> {
+export async function fetchWalmartProduct(productUrl: string, fullSync: boolean = false): Promise<WalmartProductData> {
   if (!SERPAPI_KEY) {
     throw new Error("SERPAPI_KEY is not configured. Please add it to your environment variables.");
   }
@@ -121,25 +122,52 @@ export async function fetchWalmartProduct(productUrl: string): Promise<WalmartPr
       date: review.date || new Date().toISOString()
     }));
 
-    // If no reviews in main response, try reviews endpoint
-    if (reviews.length === 0) {
-      console.log('[Walmart] No reviews in product data, fetching reviews separately...');
-      const reviewsUrl = `https://serpapi.com/search.json?engine=walmart_product_reviews&product_id=${productId}&api_key=${SERPAPI_KEY}`;
+    // If no reviews in main response or fullSync requested, try reviews endpoint
+    if (reviews.length === 0 || fullSync) {
+      console.log(`[Walmart] Fetching reviews separately (fullSync: ${fullSync})...`);
       
-      const reviewsResponse = await fetch(reviewsUrl);
-      if (reviewsResponse.ok) {
-        const reviewsDataResponse: any = await reviewsResponse.json();
-        const fetchedReviews = reviewsDataResponse.reviews || [];
+      const maxPages = fullSync ? 10 : 1; // Fetch up to 10 pages for full sync, 1 for quick
+      let currentPage = 1;
+      let hasMorePages = true;
+      
+      while (hasMorePages && currentPage <= maxPages) {
+        const reviewsUrl = `https://serpapi.com/search.json?engine=walmart_product_reviews&product_id=${productId}&page=${currentPage}&api_key=${SERPAPI_KEY}`;
         
-        fetchedReviews.forEach((review: any) => {
-          reviews.push({
-            reviewerName: review.author || 'Anonymous',
-            rating: review.rating || 0,
-            title: review.title || '',
-            text: review.review || review.text || '',
-            date: review.date || new Date().toISOString()
-          });
-        });
+        const reviewsResponse = await fetch(reviewsUrl);
+        if (reviewsResponse.ok) {
+          const reviewsDataResponse: any = await reviewsResponse.json();
+          const fetchedReviews = reviewsDataResponse.reviews || [];
+          
+          if (fetchedReviews.length === 0) {
+            hasMorePages = false;
+          } else {
+            fetchedReviews.forEach((review: any) => {
+              // Avoid duplicates by checking if review already exists
+              const reviewId = review.review_id || review.id || `${review.author}-${review.date}`;
+              const existsInList = reviews.some(r => 
+                r.reviewerName === (review.author || 'Anonymous') && 
+                r.text === (review.review || review.text || '')
+              );
+              
+              if (!existsInList) {
+                reviews.push({
+                  reviewerName: review.author || 'Anonymous',
+                  rating: review.rating || 0,
+                  title: review.title || '',
+                  text: review.review || review.text || '',
+                  date: review.date || new Date().toISOString()
+                });
+              }
+            });
+            
+            // Check if there are more pages
+            hasMorePages = !!reviewsDataResponse.serpapi_pagination?.next;
+            currentPage++;
+            console.log(`[Walmart] Page ${currentPage - 1}: found ${fetchedReviews.length} reviews (total: ${reviews.length})`);
+          }
+        } else {
+          hasMorePages = false;
+        }
       }
     }
 
