@@ -7,8 +7,9 @@ import {
   RatingDistributionChart,
   StatusDistributionChart
 } from "@/components/AnalyticsCharts";
-import { TrendingUp, TrendingDown, Star, Target, Calendar, Filter, X } from "lucide-react";
+import { TrendingUp, TrendingDown, Star, Target, Calendar, Filter, X, Download } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
@@ -32,6 +33,7 @@ type Status = "open" | "in_progress" | "resolved";
 type Severity = "low" | "medium" | "high" | "critical";
 
 export default function Analytics() {
+  const { toast } = useToast();
   const [dateRange, setDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({
     from: undefined,
     to: undefined,
@@ -158,6 +160,98 @@ export default function Analytics() {
     selectedSeverities.length +
     selectedRatings.length;
 
+  const handleExportAnalytics = () => {
+    if (!analyticsData) {
+      toast({
+        title: "No Data to Export",
+        description: "Analytics data is not available. Please wait for data to load.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Helper to properly escape CSV cell values
+    const escapeCell = (value: string | number): string => {
+      const str = String(value);
+      return `"${str.replace(/"/g, '""')}"`;
+    };
+
+    const csvRows: string[] = [];
+    
+    // Summary Statistics
+    csvRows.push([escapeCell("=== SUMMARY STATISTICS ==="), ""].join(","));
+    csvRows.push([escapeCell("Metric"), escapeCell("Value")].join(","));
+    csvRows.push([escapeCell("Total Reviews"), escapeCell(stats.totalReviews || 0)].join(","));
+    csvRows.push([escapeCell("Positive Rate"), escapeCell(`${stats.positiveRate || 0}%`)].join(","));
+    csvRows.push([escapeCell("Negative Rate"), escapeCell(`${stats.negativeRate || 0}%`)].join(","));
+    csvRows.push([escapeCell("Resolution Rate"), escapeCell(`${stats.resolutionRate || 0}%`)].join(","));
+    csvRows.push([escapeCell("Average Rating"), escapeCell(stats.avgRating || 0)].join(","));
+    csvRows.push("");
+
+    // Category Distribution
+    csvRows.push([escapeCell("=== CATEGORY DISTRIBUTION ==="), ""].join(","));
+    csvRows.push([escapeCell("Category"), escapeCell("Count")].join(","));
+    Object.entries(categoryCounts).forEach(([category, count]) => {
+      csvRows.push([escapeCell(category), escapeCell(count as number)].join(","));
+    });
+    csvRows.push("");
+
+    // Marketplace Distribution
+    csvRows.push([escapeCell("=== MARKETPLACE DISTRIBUTION ==="), ""].join(","));
+    csvRows.push([escapeCell("Marketplace"), escapeCell("Count")].join(","));
+    Object.entries(marketplaceCounts).forEach(([marketplace, count]) => {
+      csvRows.push([escapeCell(marketplace), escapeCell(count as number)].join(","));
+    });
+    csvRows.push("");
+
+    // Rating Distribution
+    csvRows.push([escapeCell("=== RATING DISTRIBUTION ==="), ""].join(","));
+    csvRows.push([escapeCell("Rating"), escapeCell("Count")].join(","));
+    Object.entries(ratingCounts).forEach(([rating, count]) => {
+      csvRows.push([escapeCell(`${rating} stars`), escapeCell(count as number)].join(","));
+    });
+    csvRows.push("");
+
+    // Status Distribution
+    csvRows.push([escapeCell("=== STATUS DISTRIBUTION ==="), ""].join(","));
+    csvRows.push([escapeCell("Status"), escapeCell("Count")].join(","));
+    Object.entries(statusCounts).forEach(([status, count]) => {
+      csvRows.push([escapeCell(status), escapeCell(count as number)].join(","));
+    });
+    csvRows.push("");
+
+    // Weekly Trends
+    csvRows.push([escapeCell("=== WEEKLY SENTIMENT TRENDS ==="), "", "", ""].join(","));
+    csvRows.push([escapeCell("Week"), escapeCell("Positive"), escapeCell("Neutral"), escapeCell("Negative")].join(","));
+    if (weeklyTrends && typeof weeklyTrends === 'object') {
+      const weeks = Object.keys(weeklyTrends);
+      weeks.forEach(week => {
+        const data = weeklyTrends[week] || { positive: 0, neutral: 0, negative: 0 };
+        csvRows.push([
+          escapeCell(week), 
+          escapeCell(data.positive || 0), 
+          escapeCell(data.neutral || 0), 
+          escapeCell(data.negative || 0)
+        ].join(","));
+      });
+    }
+
+    const csvContent = csvRows.join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `driftsignal-analytics-${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    toast({
+      title: "Export Successful",
+      description: "Analytics data exported to CSV file.",
+    });
+  };
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between gap-4 flex-wrap">
@@ -169,6 +263,16 @@ export default function Analytics() {
         </div>
         
         <div className="flex items-center gap-3 flex-wrap">
+          <Button 
+            size="sm" 
+            variant="outline"
+            onClick={handleExportAnalytics}
+            data-testid="button-export-analytics"
+          >
+            <Download className="h-4 w-4 mr-2" />
+            Export
+          </Button>
+          
           <Collapsible open={filtersOpen} onOpenChange={setFiltersOpen}>
             <CollapsibleTrigger asChild>
               <Button 

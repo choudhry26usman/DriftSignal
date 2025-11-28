@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { Calendar, X } from "lucide-react";
+import { Calendar, X, Download } from "lucide-react";
 import { 
   Select, 
   SelectContent, 
@@ -227,6 +227,54 @@ export default function WorkflowManagement() {
     }
   };
 
+  const handleExportWorkflow = () => {
+    if (allReviews.length === 0) {
+      toast({
+        title: "No Data to Export",
+        description: "There are no reviews to export. Import some reviews first.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const csvData = allReviews.map(review => {
+      return [
+        review.id,
+        review.marketplace,
+        review.title,
+        review.content,
+        review.customerName,
+        review.customerEmail || '',
+        review.rating?.toString() || '',
+        review.sentiment,
+        review.category,
+        review.severity,
+        review.status,
+        new Date(review.createdAt).toISOString(),
+        review.aiSuggestedReply || ''
+      ];
+    });
+
+    const csvContent = [
+      ['ID', 'Marketplace', 'Title', 'Content', 'Customer Name', 'Customer Email', 'Rating', 'Sentiment', 'Category', 'Severity', 'Status', 'Created At', 'AI Suggested Reply'].join(','),
+      ...csvData.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `driftsignal-workflow-${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    toast({
+      title: "Export Successful",
+      description: `Exported ${allReviews.length} reviews to CSV file.`,
+    });
+  };
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between gap-4 flex-wrap">
@@ -238,6 +286,16 @@ export default function WorkflowManagement() {
         </div>
         
         <div className="flex items-center gap-3 flex-wrap">
+          <Button 
+            size="sm" 
+            variant="outline"
+            onClick={handleExportWorkflow}
+            data-testid="button-export-workflow"
+          >
+            <Download className="h-4 w-4 mr-2" />
+            Export
+          </Button>
+          
           <Collapsible open={filtersOpen} onOpenChange={setFiltersOpen}>
             <CollapsibleTrigger asChild>
               <Button 
