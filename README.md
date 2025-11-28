@@ -6,7 +6,8 @@
 **DriftSignal** is a centralized intelligence dashboard designed for small business owners to aggregate, analyze, and respond to customer feedback across multiple marketplaces (Amazon, Walmart, Shopify) from a single interface.
 
 * **Live Demo:** [https://replit.com/@reiddm1/DriftSignal](https://replit.com/@reiddm1/DriftSignal)
-* **Course:** MBA Program, Haskayne School of Business (Fall 2025)
+* **Repository:** [https://github.com/choudhry26usman/DriftSignal](https://github.com/choudhry26usman/DriftSignal)
+* **Course:** ENTI 633 - Generative AI and Prompting, Haskayne School of Business (Fall 2025)
 
 ---
 
@@ -45,7 +46,7 @@ To run this project locally or on Replit:
 
 1.  **Clone the repo:**
     ```bash
-    git clone [https://github.com/choudhry26usman/OmniReview-Platform.git](https://github.com/choudhry26usman/OmniReview-Platform.git)
+    git clone [https://github.com/choudhry26usman/DriftSignal.git](https://github.com/choudhry26usman/DriftSignal.git)
     ```
 2.  **Install Dependencies:**
     ```bash
@@ -59,4 +60,20 @@ To run this project locally or on Replit:
     ```
 4.  **Run the Server:**
     ```bash
-    npm run
+    npm run dev
+    ```
+
+---
+
+### 👥 The Team
+* **Product Manager:** [Name]
+* **Lead Developer:** [Name]
+* **AI Prompt Engineer:** [Name]
+* **QA & Testing:** [Name]
+* **Business Analyst:** [Name]
+* **Documentation:** [Name]
+
+---
+
+### 📝 License
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
