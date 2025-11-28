@@ -2,7 +2,15 @@ import { useState, useEffect, useCallback } from "react";
 import { TourContext } from "@/hooks/use-tour";
 import { useLocation } from "wouter";
 import "shepherd.js/dist/css/shepherd.css";
-import type Shepherd from "shepherd.js";
+
+interface ShepherdTour {
+  addSteps: (steps: object[]) => void;
+  start: () => void;
+  complete: () => void;
+  cancel: () => void;
+  isActive: () => boolean;
+  on: (event: string, handler: () => void) => void;
+}
 
 interface TourProviderProps {
   children: React.ReactNode;
@@ -10,7 +18,7 @@ interface TourProviderProps {
 
 export function TourProvider({ children }: TourProviderProps) {
   const [isTourActive, setIsTourActive] = useState(false);
-  const [tour, setTour] = useState<Shepherd.Tour | null>(null);
+  const [tour, setTour] = useState<ShepherdTour | null>(null);
   const [, navigate] = useLocation();
 
   useEffect(() => {

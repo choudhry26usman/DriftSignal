@@ -128,7 +128,7 @@ export default function WorkflowManagement() {
     
     // Filter by rating
     if (selectedRatings.length > 0) {
-      reviews = reviews.filter(r => selectedRatings.includes(Math.round(r.rating)));
+      reviews = reviews.filter(r => r.rating !== null && selectedRatings.includes(Math.round(r.rating)));
     }
     
     // Filter by date range (with end-of-day handling)
@@ -148,6 +148,17 @@ export default function WorkflowManagement() {
     return reviews;
   }, [importedReviewsData, selectedProduct, selectedMarketplaces, selectedSentiments, selectedSeverities, selectedRatings, dateRange]);
 
+  // Helper to map Review to WorkflowReview
+  const mapToWorkflowReview = (r: Review) => ({
+    id: r.id,
+    marketplace: r.marketplace as "Amazon" | "Shopify" | "Walmart" | "Mailbox",
+    title: r.title,
+    severity: r.severity,
+    category: r.category,
+    rating: r.rating ?? undefined,
+    sentiment: r.sentiment as "positive" | "neutral" | "negative" | undefined,
+  });
+
   // Organize reviews into columns by status
   const workflowColumns: WorkflowColumn[] = useMemo(() => {
     const openReviews = allReviews.filter(r => r.status === "open");
@@ -158,41 +169,17 @@ export default function WorkflowManagement() {
       {
         id: "open",
         title: "Open",
-        reviews: openReviews.map(r => ({
-          id: r.id,
-          marketplace: r.marketplace,
-          title: r.title,
-          severity: r.severity,
-          category: r.category,
-          rating: r.rating,
-          sentiment: r.sentiment,
-        })),
+        reviews: openReviews.map(mapToWorkflowReview),
       },
       {
         id: "in_progress",
         title: "In Progress",
-        reviews: inProgressReviews.map(r => ({
-          id: r.id,
-          marketplace: r.marketplace,
-          title: r.title,
-          severity: r.severity,
-          category: r.category,
-          rating: r.rating,
-          sentiment: r.sentiment,
-        })),
+        reviews: inProgressReviews.map(mapToWorkflowReview),
       },
       {
         id: "resolved",
         title: "Resolved",
-        reviews: resolvedReviews.map(r => ({
-          id: r.id,
-          marketplace: r.marketplace,
-          title: r.title,
-          severity: r.severity,
-          category: r.category,
-          rating: r.rating,
-          sentiment: r.sentiment,
-        })),
+        reviews: resolvedReviews.map(mapToWorkflowReview),
       },
     ];
   }, [allReviews]);
@@ -400,7 +387,22 @@ export default function WorkflowManagement() {
         <ReviewDetailModal
           open={!!selectedReview}
           onOpenChange={(open) => !open && setSelectedReview(null)}
-          review={selectedReview}
+          review={{
+            id: selectedReview.id,
+            marketplace: selectedReview.marketplace as "Amazon" | "Shopify" | "Walmart" | "Mailbox",
+            title: selectedReview.title,
+            content: selectedReview.content,
+            customerName: selectedReview.customerName,
+            customerEmail: selectedReview.customerEmail ?? undefined,
+            rating: selectedReview.rating ?? undefined,
+            sentiment: selectedReview.sentiment as "positive" | "neutral" | "negative",
+            category: selectedReview.category,
+            severity: selectedReview.severity,
+            status: selectedReview.status,
+            createdAt: selectedReview.createdAt,
+            aiSuggestedReply: selectedReview.aiSuggestedReply ?? undefined,
+            aiAnalysisDetails: selectedReview.aiAnalysisDetails ?? undefined,
+          }}
         />
       )}
     </div>
