@@ -45,7 +45,7 @@ export function TourProvider({ children }: TourProviderProps) {
           title: "Welcome to DriftSignal!",
           text: `
             <p>Let's take a quick tour of the platform to help you manage customer reviews across all your marketplaces.</p>
-            <p class="mt-2 text-sm text-muted-foreground">We'll visit each module and explore the key features.</p>
+            <p class="mt-2 text-sm text-muted-foreground">We'll explore each module including the new dashboard infographics, workflow swimlanes, and AI-powered features.</p>
           `,
           buttons: [
             {
@@ -65,8 +65,15 @@ export function TourProvider({ children }: TourProviderProps) {
           id: "dashboard-intro",
           title: "Dashboard Overview",
           text: `
-            <p>This is your <strong>Dashboard</strong> - your central hub for all reviews.</p>
-            <p class="mt-2 text-sm">Here you can see tracked products, summary stats, and all imported reviews at a glance.</p>
+            <p>This is your <strong>Dashboard</strong> - your central command center for all reviews.</p>
+            <p class="mt-2 text-sm">At a glance, you can see:</p>
+            <ul class="mt-1 text-sm space-y-1">
+              <li>Key metrics and statistics</li>
+              <li>Sentiment trends and source distribution charts</li>
+              <li>Severity & status matrix</li>
+              <li>Collapsible tracked products</li>
+              <li>All imported reviews</li>
+            </ul>
           `,
           attachTo: {
             element: '[data-testid="link-dashboard"]',
@@ -94,43 +101,12 @@ export function TourProvider({ children }: TourProviderProps) {
               <li>Walmart (via product URL)</li>
               <li>Shopify (via store connection)</li>
               <li>CSV/JSON file uploads</li>
-              <li>Email inbox (Outlook)</li>
+              <li>Email inbox (Outlook) with AI product extraction</li>
             </ul>
-            <p class="mt-2 text-sm">Reviews are automatically analyzed by AI for sentiment, category, and severity.</p>
+            <p class="mt-2 text-sm">Reviews are automatically analyzed by <strong>Grok AI</strong> for sentiment, category, and severity.</p>
           `,
           attachTo: {
             element: '[data-testid="button-import"]',
-            on: "right",
-          },
-          buttons: [
-            {
-              text: "Back",
-              action() { this.back(); },
-              secondary: true,
-            },
-            {
-              text: "Next",
-              action() { this.next(); },
-            },
-          ],
-        },
-        {
-          id: "advanced-filters",
-          title: "Advanced Filters",
-          text: `
-            <p>Use <strong>Advanced Filters</strong> to narrow down reviews by:</p>
-            <ul class="mt-2 text-sm space-y-1">
-              <li>Marketplace (Amazon, Walmart, Shopify, Email)</li>
-              <li>Date range</li>
-              <li>Sentiment (positive/negative/neutral)</li>
-              <li>Severity level</li>
-              <li>Status (open/in-progress/resolved)</li>
-              <li>Product</li>
-            </ul>
-            <p class="mt-2 text-sm">You can also export filtered data as CSV.</p>
-          `,
-          attachTo: {
-            element: '[data-testid="button-filters"]',
             on: "right",
           },
           buttons: [
@@ -169,6 +145,62 @@ export function TourProvider({ children }: TourProviderProps) {
               secondary: true,
             },
             {
+              text: "Next",
+              action() { this.next(); },
+            },
+          ],
+        },
+        {
+          id: "dashboard-charts",
+          title: "Dashboard Infographics",
+          text: `
+            <p>The dashboard includes <strong>visual analytics</strong>:</p>
+            <ul class="mt-2 text-sm space-y-1">
+              <li><strong>Sentiment Trend</strong> - Weekly positive/neutral/negative trends</li>
+              <li><strong>Source Distribution</strong> - Reviews by marketplace (donut chart)</li>
+              <li><strong>Severity & Status Matrix</strong> - Priority heatmap showing review urgency</li>
+              <li><strong>Response Metrics</strong> - Average time to action & 48-hour resolution rate</li>
+            </ul>
+            <p class="mt-2 text-sm">These help you quickly identify trends and priorities.</p>
+          `,
+          buttons: [
+            {
+              text: "Back",
+              action() { this.back(); },
+              secondary: true,
+            },
+            {
+              text: "Next",
+              action() { this.next(); },
+            },
+          ],
+        },
+        {
+          id: "advanced-filters",
+          title: "Advanced Filters",
+          text: `
+            <p>Use <strong>Advanced Filters</strong> to narrow down reviews by:</p>
+            <ul class="mt-2 text-sm space-y-1">
+              <li>Marketplace (Amazon, Walmart, Shopify, Email)</li>
+              <li>Date range</li>
+              <li>Sentiment (positive/negative/neutral)</li>
+              <li>Severity level (low/medium/high/critical)</li>
+              <li>Status (open/in-progress/resolved)</li>
+              <li>Product and rating</li>
+            </ul>
+            <p class="mt-2 text-sm">You can also export filtered data as CSV.</p>
+          `,
+          attachTo: {
+            element: '[data-testid="button-filters"]',
+            on: "right",
+          },
+          buttons: [
+            {
+              text: "Back",
+              action() { this.back(); },
+              secondary: true,
+            },
+            {
               text: "Go to Workflow",
               action() { 
                 const el = document.querySelector('[data-testid="link-workflow"]') as HTMLElement;
@@ -186,6 +218,7 @@ export function TourProvider({ children }: TourProviderProps) {
           text: `
             <p>Welcome to <strong>Workflow Management</strong>!</p>
             <p class="mt-2 text-sm">This Kanban-style board helps you organize and track review responses through different stages.</p>
+            <p class="mt-2 text-sm"><strong>New features:</strong> Quick search bar and collapsible product swimlanes for managing large review volumes.</p>
           `,
           beforeShowPromise: function() {
             return new Promise<void>((resolve) => setTimeout(resolve, 400));
@@ -207,16 +240,16 @@ export function TourProvider({ children }: TourProviderProps) {
           ],
         },
         {
-          id: "workflow-columns",
-          title: "Kanban Columns",
+          id: "workflow-search",
+          title: "Quick Search",
           text: `
-            <p>Reviews move through three stages:</p>
+            <p>Use the <strong>search bar</strong> to instantly find reviews:</p>
             <ul class="mt-2 text-sm space-y-1">
-              <li><strong>Open</strong> - New reviews needing attention</li>
-              <li><strong>In Progress</strong> - Currently being handled</li>
-              <li><strong>Resolved</strong> - Completed reviews</li>
+              <li>Search by customer name</li>
+              <li>Search by product name</li>
+              <li>Search by review title</li>
             </ul>
-            <p class="mt-2 text-sm"><strong>Drag and drop</strong> cards between columns to update their status instantly.</p>
+            <p class="mt-2 text-sm">Results filter in real-time as you type.</p>
           `,
           buttons: [
             {
@@ -231,16 +264,17 @@ export function TourProvider({ children }: TourProviderProps) {
           ],
         },
         {
-          id: "workflow-filters",
-          title: "Workflow Filters",
+          id: "workflow-columns",
+          title: "Kanban Columns & Swimlanes",
           text: `
-            <p>Use the <strong>filter panel</strong> to focus on specific reviews:</p>
+            <p>Reviews move through three stages:</p>
             <ul class="mt-2 text-sm space-y-1">
-              <li>Filter by product, marketplace, sentiment</li>
-              <li>Filter by severity and rating</li>
-              <li>Set date range for time-based views</li>
+              <li><strong>Open</strong> - New reviews needing attention</li>
+              <li><strong>In Progress</strong> - Currently being handled</li>
+              <li><strong>Resolved</strong> - Completed reviews</li>
             </ul>
-            <p class="mt-2 text-sm">Click on any card to view full details and generate AI replies.</p>
+            <p class="mt-2 text-sm"><strong>Swimlanes:</strong> Reviews are grouped by product with expandable/collapsible sections - great for managing many reviews!</p>
+            <p class="mt-2 text-sm"><strong>Drag and drop</strong> cards between columns to update status.</p>
           `,
           buttons: [
             {
@@ -266,6 +300,7 @@ export function TourProvider({ children }: TourProviderProps) {
           text: `
             <p>Welcome to <strong>Analytics</strong>!</p>
             <p class="mt-2 text-sm">Visualize your review data with interactive charts and track trends over time.</p>
+            <p class="mt-2 text-sm">All charts respect your active filters for focused analysis.</p>
           `,
           beforeShowPromise: function() {
             return new Promise<void>((resolve) => setTimeout(resolve, 400));
@@ -292,12 +327,36 @@ export function TourProvider({ children }: TourProviderProps) {
           text: `
             <p>Key visualizations include:</p>
             <ul class="mt-2 text-sm space-y-1">
+              <li><strong>Sentiment Trend</strong> - Weekly positive/neutral/negative trends</li>
+              <li><strong>Category Distribution</strong> - Issue types with legend</li>
+              <li><strong>Marketplace Breakdown</strong> - Reviews by source</li>
               <li><strong>Rating Distribution</strong> - Star rating breakdown</li>
-              <li><strong>Sentiment Analysis</strong> - Positive/negative/neutral split</li>
-              <li><strong>Status Distribution</strong> - Open vs resolved reviews</li>
-              <li><strong>Trends Over Time</strong> - Review patterns</li>
+              <li><strong>Status Distribution</strong> - Open/in-progress/resolved</li>
+              <li><strong>Response Metrics</strong> - Avg. time to action & resolution rates</li>
             </ul>
-            <p class="mt-2 text-sm">All charts respect your active filters from the sidebar.</p>
+          `,
+          buttons: [
+            {
+              text: "Back",
+              action() { this.back(); },
+              secondary: true,
+            },
+            {
+              text: "Next",
+              action() { this.next(); },
+            },
+          ],
+        },
+        {
+          id: "analytics-export",
+          title: "Export Options",
+          text: `
+            <p>Click <strong>Export</strong> to access two export modes:</p>
+            <ul class="mt-2 text-sm space-y-1">
+              <li><strong>Filtered Data</strong> - Export summary statistics and distributions based on current filters</li>
+              <li><strong>All Data</strong> - Export complete raw review data for offline analysis (all fields included)</li>
+            </ul>
+            <p class="mt-2 text-sm">Perfect for team sharing or external reporting!</p>
           `,
           buttons: [
             {
@@ -349,10 +408,10 @@ export function TourProvider({ children }: TourProviderProps) {
           text: `
             <p>Check the status of your integrations:</p>
             <ul class="mt-2 text-sm space-y-1">
-              <li><strong>AI (OpenRouter)</strong> - Powers sentiment analysis & replies</li>
+              <li><strong>AI (Grok via OpenRouter)</strong> - Powers sentiment analysis, categorization & reply generation</li>
               <li><strong>Amazon API</strong> - Fetches Amazon reviews</li>
               <li><strong>Walmart API</strong> - Fetches Walmart reviews</li>
-              <li><strong>Outlook</strong> - Email sync & sending replies</li>
+              <li><strong>Outlook</strong> - Email sync, product extraction & sending replies</li>
             </ul>
             <p class="mt-2 text-sm">Green checkmarks indicate active connections.</p>
           `,
@@ -407,12 +466,41 @@ export function TourProvider({ children }: TourProviderProps) {
             <p>The FAQ covers key topics:</p>
             <ul class="mt-2 text-sm space-y-1">
               <li>Importing reviews from marketplaces</li>
-              <li>AI-powered analysis features</li>
+              <li>AI-powered analysis features (Grok 4.1)</li>
+              <li>Dashboard infographics and charts</li>
+              <li>Workflow swimlanes and search</li>
+              <li>Analytics export options</li>
               <li>Responding to reviews</li>
-              <li>Managing workflow status</li>
-              <li>Exporting data</li>
             </ul>
             <p class="mt-2 text-sm">You can restart this tour anytime from this page!</p>
+          `,
+          buttons: [
+            {
+              text: "Back",
+              action() { this.back(); },
+              secondary: true,
+            },
+            {
+              text: "Next",
+              action() { this.next(); },
+            },
+          ],
+        },
+
+        // ===== AI CHATBOT =====
+        {
+          id: "chatbot-assistant",
+          title: "AI Chatbot Assistant",
+          text: `
+            <p>Need quick help? Use the <strong>AI Chatbot</strong>!</p>
+            <p class="mt-2 text-sm">Look for the chat button in the bottom-right corner. The chatbot can help with:</p>
+            <ul class="mt-2 text-sm space-y-1">
+              <li>Navigating the platform</li>
+              <li>Understanding features</li>
+              <li>Common questions</li>
+              <li>Quick tips and shortcuts</li>
+            </ul>
+            <p class="mt-2 text-sm">Powered by Grok AI for instant, helpful responses.</p>
           `,
           buttons: [
             {
@@ -437,7 +525,7 @@ export function TourProvider({ children }: TourProviderProps) {
               <li><strong>Amazon/Walmart/Shopify:</strong> Click a review, generate AI reply, then <strong>Copy Reply</strong> to paste in your seller portal.</li>
               <li><strong>Email (Mailbox):</strong> Click a review, generate AI reply, then <strong>Send via Outlook</strong> directly.</li>
             </ul>
-            <p class="mt-2 text-sm">AI generates professional responses based on the review content and sentiment.</p>
+            <p class="mt-2 text-sm">Grok AI generates professional responses based on the review content, sentiment, and severity.</p>
           `,
           buttons: [
             {
@@ -460,11 +548,12 @@ export function TourProvider({ children }: TourProviderProps) {
             <p>Congratulations! You've completed the DriftSignal tour.</p>
             <p class="mt-2 text-sm"><strong>Quick recap:</strong></p>
             <ul class="mt-2 text-sm space-y-1">
-              <li><strong>Dashboard</strong> - View & filter all reviews</li>
-              <li><strong>Workflow</strong> - Kanban board for status management</li>
-              <li><strong>Analytics</strong> - Charts & trend analysis</li>
+              <li><strong>Dashboard</strong> - Stats, charts, trends & tracked products</li>
+              <li><strong>Workflow</strong> - Kanban with search & product swimlanes</li>
+              <li><strong>Analytics</strong> - Charts, metrics & tabbed export</li>
               <li><strong>Settings</strong> - Integration status</li>
-              <li><strong>Help & FAQ</strong> - Support & this tour</li>
+              <li><strong>Help & FAQ</strong> - Guides & this tour</li>
+              <li><strong>Chatbot</strong> - AI assistant for quick help</li>
             </ul>
             <p class="mt-3 text-sm text-primary font-medium">Start importing reviews to get started!</p>
           `,
