@@ -31,41 +31,41 @@ export function SentimentTrendChart({ data }: SentimentTrendChartProps) {
 
   if (chartData.length === 0) {
     return (
-      <Card data-testid="chart-sentiment-trend" className="bg-amber-50/95 border-0">
+      <Card data-testid="chart-sentiment-trend" className="bg-slate-800/90 border border-slate-700/50 rounded-2xl">
         <CardHeader>
-          <CardTitle className="text-slate-800">Sentiment Trend</CardTitle>
+          <CardTitle className="text-slate-100">Sentiment Trend</CardTitle>
         </CardHeader>
         <CardContent className="flex items-center justify-center h-[300px]">
-          <p className="text-slate-500 text-sm">No review data available for trends</p>
+          <p className="text-slate-400 text-sm">No review data available for trends</p>
         </CardContent>
       </Card>
     );
   }
 
   return (
-    <Card data-testid="chart-sentiment-trend" className="bg-amber-50/95 border-0">
+    <Card data-testid="chart-sentiment-trend" className="bg-slate-800/90 border border-slate-700/50 rounded-2xl">
       <CardHeader>
-        <CardTitle className="text-slate-800">Sentiment Trend</CardTitle>
+        <CardTitle className="text-slate-100">Sentiment Trend</CardTitle>
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={300}>
           <LineChart data={chartData} margin={{ bottom: 20 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+            <CartesianGrid strokeDasharray="3 3" stroke="#475569" />
             <XAxis 
               dataKey="week" 
-              stroke="#64748b" 
-              tick={{ fontSize: 10, fill: "#64748b" }}
+              stroke="#94a3b8" 
+              tick={{ fontSize: 10, fill: "#94a3b8" }}
               angle={-30}
               textAnchor="end"
               height={50}
             />
-            <YAxis stroke="#64748b" tick={{ fill: "#64748b" }} allowDecimals={false} />
+            <YAxis stroke="#94a3b8" tick={{ fill: "#94a3b8" }} allowDecimals={false} />
             <Tooltip 
               contentStyle={{ 
-                backgroundColor: "#ffffff", 
-                border: "1px solid #e2e8f0",
+                backgroundColor: "#1e293b", 
+                border: "1px solid #475569",
                 borderRadius: "8px",
-                boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)"
+                color: "#f1f5f9"
               }}
               formatter={(value: number) => [Math.round(value), '']}
             />
@@ -94,9 +94,9 @@ export function CategoryDistributionChart({ data }: CategoryDistributionChartPro
   const total = chartData.reduce((sum, item) => sum + item.count, 0);
 
   return (
-    <Card data-testid="chart-category-distribution" className="bg-amber-50/95 border-0">
+    <Card data-testid="chart-category-distribution" className="bg-slate-800/90 border border-slate-700/50 rounded-2xl">
       <CardHeader>
-        <CardTitle className="text-slate-800">Category Distribution</CardTitle>
+        <CardTitle className="text-slate-100">Category Distribution</CardTitle>
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={300}>
@@ -117,14 +117,14 @@ export function CategoryDistributionChart({ data }: CategoryDistributionChartPro
             </Pie>
             <Tooltip 
               contentStyle={{ 
-                backgroundColor: "#ffffff", 
-                border: "1px solid #e2e8f0",
+                backgroundColor: "#1e293b", 
+                border: "1px solid #475569",
                 borderRadius: "8px",
-                boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)"
+                color: "#f1f5f9"
               }}
               formatter={(value: number) => [value, 'Count']}
             />
-            <text x="50%" y="50%" textAnchor="middle" dominantBaseline="middle" className="text-2xl font-bold" fill="#1e293b">
+            <text x="50%" y="50%" textAnchor="middle" dominantBaseline="middle" className="text-2xl font-bold" fill="#f1f5f9">
               {total}
             </text>
           </PieChart>
@@ -142,9 +142,9 @@ export function MarketplaceDistributionChart({ data }: MarketplaceDistributionCh
   const chartData = Object.entries(data).map(([name, value]) => ({ name, value }));
 
   return (
-    <Card data-testid="chart-marketplace-distribution" className="bg-amber-50/95 border-0">
+    <Card data-testid="chart-marketplace-distribution" className="bg-slate-800/90 border border-slate-700/50 rounded-2xl">
       <CardHeader>
-        <CardTitle className="text-slate-800">Marketplace Breakdown</CardTitle>
+        <CardTitle className="text-slate-100">Marketplace Breakdown</CardTitle>
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={300}>
@@ -165,10 +165,10 @@ export function MarketplaceDistributionChart({ data }: MarketplaceDistributionCh
             </Pie>
             <Tooltip 
               contentStyle={{ 
-                backgroundColor: "#ffffff", 
-                border: "1px solid #e2e8f0",
+                backgroundColor: "#1e293b", 
+                border: "1px solid #475569",
                 borderRadius: "8px",
-                boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)"
+                color: "#f1f5f9"
               }} 
             />
           </PieChart>
@@ -189,26 +189,26 @@ export function RatingDistributionChart({ data }: RatingDistributionChartProps) 
   }));
 
   return (
-    <Card data-testid="chart-rating-distribution" className="bg-amber-50/95 border-0">
+    <Card data-testid="chart-rating-distribution" className="bg-slate-800/90 border border-slate-700/50 rounded-2xl">
       <CardHeader>
-        <CardTitle className="text-slate-800">Rating Distribution</CardTitle>
+        <CardTitle className="text-slate-100">Rating Distribution</CardTitle>
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={300}>
           <BarChart data={chartData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-            <XAxis dataKey="rating" stroke="#64748b" tick={{ fontSize: 12, fill: "#64748b" }} />
-            <YAxis stroke="#64748b" tick={{ fill: "#64748b" }} allowDecimals={false} />
+            <CartesianGrid strokeDasharray="3 3" stroke="#475569" />
+            <XAxis dataKey="rating" stroke="#94a3b8" tick={{ fontSize: 12, fill: "#94a3b8" }} />
+            <YAxis stroke="#94a3b8" tick={{ fill: "#94a3b8" }} allowDecimals={false} />
             <Tooltip 
               contentStyle={{ 
-                backgroundColor: "#ffffff", 
-                border: "1px solid #e2e8f0",
+                backgroundColor: "#1e293b", 
+                border: "1px solid #475569",
                 borderRadius: "8px",
-                boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)"
+                color: "#f1f5f9"
               }}
               formatter={(value: number) => [Math.round(value), 'Reviews']}
             />
-            <Bar dataKey="count" fill="url(#barGradient)" radius={[4, 4, 0, 0]}>
+            <Bar dataKey="count" radius={[4, 4, 0, 0]}>
               {chartData.map((entry, index) => (
                 <Cell key={`cell-${index}`} fill={index < 2 ? "#f59e0b" : "#a855f7"} />
               ))}
@@ -231,9 +231,9 @@ export function StatusDistributionChart({ data }: StatusDistributionChartProps) 
   }));
 
   return (
-    <Card data-testid="chart-status-distribution" className="bg-amber-50/95 border-0">
+    <Card data-testid="chart-status-distribution" className="bg-slate-800/90 border border-slate-700/50 rounded-2xl">
       <CardHeader>
-        <CardTitle className="text-slate-800">Review Status Distribution</CardTitle>
+        <CardTitle className="text-slate-100">Review Status Distribution</CardTitle>
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={300}>
@@ -254,10 +254,10 @@ export function StatusDistributionChart({ data }: StatusDistributionChartProps) 
             </Pie>
             <Tooltip 
               contentStyle={{ 
-                backgroundColor: "#ffffff", 
-                border: "1px solid #e2e8f0",
+                backgroundColor: "#1e293b", 
+                border: "1px solid #475569",
                 borderRadius: "8px",
-                boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)"
+                color: "#f1f5f9"
               }} 
             />
           </PieChart>
