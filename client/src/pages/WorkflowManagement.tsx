@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { Calendar, X, Download } from "lucide-react";
+import { Calendar, X, Download, ArrowUpDown } from "lucide-react";
 import { 
   Select, 
   SelectContent, 
@@ -39,6 +39,7 @@ export default function WorkflowManagement() {
   const [selectedSentiments, setSelectedSentiments] = useState<Sentiment[]>([]);
   const [selectedSeverities, setSelectedSeverities] = useState<Severity[]>([]);
   const [selectedRatings, setSelectedRatings] = useState<number[]>([]);
+  const [sortBy, setSortBy] = useState<"date-desc" | "date-asc" | "severity">("date-desc");
   const { toast } = useToast();
 
   const handleClearFilters = () => {
@@ -145,8 +146,23 @@ export default function WorkflowManagement() {
       });
     }
     
+    // Sort reviews
+    const severityOrder: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
+    reviews.sort((a, b) => {
+      switch (sortBy) {
+        case "date-desc":
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        case "date-asc":
+          return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+        case "severity":
+          return (severityOrder[a.severity] ?? 3) - (severityOrder[b.severity] ?? 3);
+        default:
+          return 0;
+      }
+    });
+    
     return reviews;
-  }, [importedReviewsData, selectedProduct, selectedMarketplaces, selectedSentiments, selectedSeverities, selectedRatings, dateRange]);
+  }, [importedReviewsData, selectedProduct, selectedMarketplaces, selectedSentiments, selectedSeverities, selectedRatings, dateRange, sortBy]);
 
   // Helper to map Review to WorkflowReview
   const mapToWorkflowReview = (r: Review) => ({
@@ -286,6 +302,18 @@ export default function WorkflowManagement() {
         </div>
         
         <div className="flex items-center gap-3 flex-wrap">
+          <Select value={sortBy} onValueChange={(v) => setSortBy(v as typeof sortBy)}>
+            <SelectTrigger className="w-[160px]" data-testid="select-sort-workflow">
+              <ArrowUpDown className="h-4 w-4 mr-2" />
+              <SelectValue placeholder="Sort by" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="date-desc">Newest First</SelectItem>
+              <SelectItem value="date-asc">Oldest First</SelectItem>
+              <SelectItem value="severity">Severity</SelectItem>
+            </SelectContent>
+          </Select>
+          
           <Button 
             size="sm" 
             variant="outline"
