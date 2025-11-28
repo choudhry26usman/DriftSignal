@@ -1689,6 +1689,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Import Walmart reviews - fetch from Walmart and process through AI
   app.post("/api/walmart/import-reviews", isAuthenticated, async (req: any, res) => {
     try {
+      const userId = req.user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ error: "User not authenticated" });
+      }
+      
       let { productUrl } = req.body;
       
       if (!productUrl || typeof productUrl !== 'string') {
@@ -1799,6 +1804,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
           
           await storage.createReview({
+            userId,
             externalReviewId,
             marketplace: processedReview.marketplace,
             productId,
@@ -1825,13 +1831,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Track the product in database
-      const existingProduct = await storage.getProductByIdentifier("Walmart", productId);
+      const existingProduct = await storage.getProductByIdentifier("Walmart", productId, userId);
       
       if (existingProduct) {
         await storage.updateProductLastImported(existingProduct.id);
         console.log(`✓ Updated product tracking for "${productName}"`);
       } else {
         await storage.createProduct({
+          userId,
           platform: "Walmart",
           productId,
           productName,
