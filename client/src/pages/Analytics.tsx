@@ -307,6 +307,7 @@ export default function Analytics() {
               icon={TrendingUp}
               subtitle={`${stats.totalReviews || 0} total reviews`}
               testId="stat-positive-rate"
+              gradientClass="gradient-stat-1"
             />
             <StatCard
               title="Negative Rate"
@@ -314,6 +315,7 @@ export default function Analytics() {
               icon={TrendingDown}
               subtitle={`${stats.totalReviews || 0} total reviews`}
               testId="stat-negative-rate"
+              gradientClass="gradient-stat-2"
             />
             <StatCard
               title="Resolution Rate"
@@ -321,6 +323,7 @@ export default function Analytics() {
               icon={Target}
               subtitle={`${stats.totalReviews || 0} total reviews`}
               testId="stat-resolution-rate"
+              gradientClass="gradient-stat-3"
             />
             <StatCard
               title="Avg Rating"
@@ -328,6 +331,7 @@ export default function Analytics() {
               icon={Star}
               subtitle="Out of 5 stars"
               testId="stat-avg-rating"
+              gradientClass="gradient-stat-4"
             />
           </div>
 

@@ -510,24 +510,28 @@ export default function Dashboard() {
           value={metrics.totalReviews.toString()}
           icon={MessageSquare}
           testId="stat-total-reviews"
+          gradientClass="gradient-stat-1"
         />
         <StatCard
           title="Avg. Rating"
           value={metrics.avgRating}
           icon={TrendingUp}
           testId="stat-avg-rating"
+          gradientClass="gradient-stat-2"
         />
         <StatCard
           title="Pending"
           value={metrics.pending.toString()}
           icon={Clock}
           testId="stat-pending"
+          gradientClass="gradient-stat-3"
         />
         <StatCard
           title="Resolved"
           value={metrics.resolved.toString()}
           icon={CheckCircle}
           testId="stat-resolved"
+          gradientClass="gradient-stat-4"
         />
       </div>
 
