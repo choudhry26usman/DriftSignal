@@ -1,8 +1,6 @@
-import { LayoutDashboard, Workflow, BarChart3, Upload, Filter, Settings, Mail, Grid, LogOut, User, HelpCircle } from "lucide-react";
-import { SiAmazon, SiShopify } from "react-icons/si";
-import { WalmartLogo } from "@/components/WalmartLogo";
-import { Link, useLocation, useSearch } from "wouter";
-import { useState, useMemo } from "react";
+import { LayoutDashboard, Workflow, BarChart3, Upload, Filter, Settings, LogOut, User, HelpCircle } from "lucide-react";
+import { Link, useLocation } from "wouter";
+import { useState } from "react";
 import {
   Sidebar,
   SidebarContent,
@@ -38,16 +36,8 @@ const mainMenuItems = [
   { title: "Help & FAQ", url: "/faq", icon: HelpCircle, testId: "link-faq" },
 ];
 
-const marketplaces = [
-  { title: "Amazon", icon: SiAmazon, color: "#FF9900" },
-  { title: "Shopify", icon: SiShopify, color: "#7AB55C" },
-  { title: "Walmart", icon: WalmartLogo, color: undefined },
-  { title: "Mailbox", icon: Mail, color: "#0078D4" },
-];
-
 export function AppSidebar() {
-  const [location, navigate] = useLocation();
-  const searchString = useSearch();
+  const [location] = useLocation();
   const [importModalOpen, setImportModalOpen] = useState(false);
   const [filtersModalOpen, setFiltersModalOpen] = useState(false);
   const { user } = useAuth();
@@ -75,34 +65,6 @@ export function AppSidebar() {
     }
     return "User";
   };
-  
-  const activeMarketplace = useMemo(() => {
-    const searchParams = new URLSearchParams(searchString);
-    return searchParams.get('marketplace');
-  }, [searchString]);
-
-  const handleMarketplaceClick = (marketplace: string) => {
-    const currentParams = new URLSearchParams(searchString);
-    const currentMarketplace = currentParams.get('marketplace');
-    
-    const newParams = new URLSearchParams(searchString);
-    
-    if (currentMarketplace === marketplace) {
-      newParams.delete('marketplace');
-    } else {
-      newParams.set('marketplace', marketplace);
-    }
-    
-    const newSearch = newParams.toString();
-    navigate(newSearch ? `/?${newSearch}` : '/');
-  };
-
-  const handleClearFilter = () => {
-    const newParams = new URLSearchParams(searchString);
-    newParams.delete('marketplace');
-    const newSearch = newParams.toString();
-    navigate(newSearch ? `/?${newSearch}` : '/');
-  };
 
   return (
     <>
@@ -128,45 +90,11 @@ export function AppSidebar() {
               <SidebarMenu>
                 {mainMenuItems.map((item) => (
                   <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild isActive={location === item.url && !activeMarketplace}>
+                    <SidebarMenuButton asChild isActive={location === item.url}>
                       <Link href={item.url} data-testid={item.testId}>
                         <item.icon className="h-4 w-4" />
                         <span>{item.title}</span>
                       </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-
-          <Separator className="my-2" />
-
-          <SidebarGroup>
-            <SidebarGroupLabel>Marketplaces</SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                <SidebarMenuItem>
-                  <SidebarMenuButton 
-                    className="hover-elevate active-elevate-2"
-                    onClick={handleClearFilter}
-                    isActive={!activeMarketplace}
-                    data-testid="link-marketplace-all"
-                  >
-                    <Grid className="h-4 w-4" />
-                    <span>All Marketplaces</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                {marketplaces.map((marketplace) => (
-                  <SidebarMenuItem key={marketplace.title}>
-                    <SidebarMenuButton 
-                      className="hover-elevate active-elevate-2"
-                      onClick={() => handleMarketplaceClick(marketplace.title)}
-                      isActive={activeMarketplace === marketplace.title}
-                      data-testid={`link-marketplace-${marketplace.title.toLowerCase()}`}
-                    >
-                      <marketplace.icon className="h-4 w-4" style={{ color: marketplace.color }} />
-                      <span>{marketplace.title}</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 ))}
