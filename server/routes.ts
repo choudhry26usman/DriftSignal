@@ -856,6 +856,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { reviewId } = req.params;
       const { status } = req.body;
+      const userId = req.user?.claims?.sub;
 
       if (!status || !['open', 'in_progress', 'resolved'].includes(status)) {
         return res.status(400).json({ 
@@ -863,8 +864,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Verify the review exists before updating
-      const review = await storage.getReviewById(reviewId);
+      // Verify the review exists AND belongs to this user before updating
+      const review = await storage.getReviewByIdForUser(reviewId, userId);
       if (!review) {
         return res.status(404).json({ error: "Review not found" });
       }

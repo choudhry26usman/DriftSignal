@@ -21,6 +21,7 @@ export interface IStorage {
   // Review methods (user-scoped)
   getReviews(userId?: string): Promise<Review[]>;
   getReviewById(id: string): Promise<Review | undefined>;
+  getReviewByIdForUser(id: string, userId: string): Promise<Review | undefined>;
   createReview(review: InsertReview): Promise<Review>;
   updateReviewStatus(id: string, status: string): Promise<void>;
   checkReviewExists(externalReviewId: string, marketplace: string, userId?: string): Promise<boolean>;
@@ -67,6 +68,10 @@ export class MemStorage implements IStorage {
   }
 
   async getReviewById(id: string): Promise<Review | undefined> {
+    return undefined;
+  }
+
+  async getReviewByIdForUser(id: string, userId: string): Promise<Review | undefined> {
     return undefined;
   }
 
@@ -154,6 +159,14 @@ export class DBStorage implements IStorage {
     const result = await db.select()
       .from(reviews)
       .where(eq(reviews.id, id))
+      .limit(1);
+    return result[0];
+  }
+
+  async getReviewByIdForUser(id: string, userId: string): Promise<Review | undefined> {
+    const result = await db.select()
+      .from(reviews)
+      .where(and(eq(reviews.id, id), eq(reviews.userId, userId)))
       .limit(1);
     return result[0];
   }
