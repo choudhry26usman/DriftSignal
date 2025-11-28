@@ -1204,6 +1204,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`Deleted ${deletedReviewsCount} reviews for product ${productId}`);
       }
 
+      // Add to product history before deleting
+      await storage.addProductHistory({
+        userId,
+        platform: product.platform,
+        productId: product.productId,
+        productName: product.productName,
+        reviewsDeleted: deleteReviews ? 1 : 0,
+      });
+
       // Delete the product
       const deleted = await storage.deleteProduct(product.id, userId);
       
@@ -1223,6 +1232,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Failed to delete product:", error);
       res.status(500).json({ error: "Failed to delete product" });
+    }
+  });
+
+  // Get product history (user-scoped)
+  app.get("/api/products/history", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      const history = await storage.getProductHistory(userId);
+      res.json({ history });
+    } catch (error: any) {
+      console.error("Failed to get product history:", error);
+      res.status(500).json({ error: "Failed to get product history" });
+    }
+  });
+
+  // Delete product history entry (user-scoped)
+  app.delete("/api/products/history/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      const { id } = req.params;
+      const deleted = await storage.deleteProductHistory(id, userId);
+      if (!deleted) {
+        return res.status(404).json({ error: "History entry not found" });
+      }
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Failed to delete product history:", error);
+      res.status(500).json({ error: "Failed to delete history" });
     }
   });
 

@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { StatCard } from "@/components/StatCard";
@@ -6,7 +6,7 @@ import { ReviewCard } from "@/components/ReviewCard";
 import { ReviewDetailModal } from "@/components/ReviewDetailModal";
 import { ImportReviewsModal } from "@/components/ImportReviewsModal";
 import { ImportProductModal } from "@/components/ImportProductModal";
-import { MessageSquare, TrendingUp, Clock, CheckCircle, Search, Upload, Download, Mail, RefreshCw, Loader2, Package, ShoppingCart, ExternalLink, Trash2, Calendar, X, ArrowUpDown } from "lucide-react";
+import { MessageSquare, TrendingUp, Clock, CheckCircle, Search, Upload, Download, Mail, RefreshCw, Loader2, Package, ShoppingCart, ExternalLink, Trash2, Calendar, X, ArrowUpDown, ChevronLeft, ChevronRight, LayoutGrid, List } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -66,6 +66,9 @@ export default function Dashboard() {
   const [selectedSeverities, setSelectedSeverities] = useState<Severity[]>([]);
   const [selectedRatings, setSelectedRatings] = useState<number[]>([]);
   const [sortBy, setSortBy] = useState<"date-desc" | "date-asc" | "severity" | "status">("date-desc");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
+  const [viewMode, setViewMode] = useState<"cards" | "compact">("cards");
   const { toast } = useToast();
 
   const handleClearFilters = () => {
@@ -253,6 +256,42 @@ export default function Dashboard() {
     return [...mockReviews, ...imported];
   }, [importedReviewsData]);
 
+  // Derive unique products from both tracked products AND reviews
+  // This ensures orphaned reviews (where product was deleted) still appear in filters
+  const uniqueProducts = useMemo(() => {
+    const productMap = new Map<string, { platform: string; productId: string; productName: string; isTracked: boolean }>();
+    
+    // Add tracked products first
+    productsData?.products.forEach(product => {
+      const key = `${product.platform}|${product.productId}`;
+      productMap.set(key, {
+        platform: product.platform,
+        productId: product.productId,
+        productName: product.productName,
+        isTracked: true,
+      });
+    });
+    
+    // Add products from reviews (may include orphaned products)
+    allReviews.forEach(review => {
+      const key = `${review.marketplace}|${review.productId}`;
+      if (!productMap.has(key)) {
+        productMap.set(key, {
+          platform: review.marketplace,
+          productId: review.productId,
+          productName: review.productName || review.productId,
+          isTracked: false,
+        });
+      }
+    });
+    
+    return Array.from(productMap.values()).sort((a, b) => {
+      // Sort tracked products first, then by name
+      if (a.isTracked !== b.isTracked) return a.isTracked ? -1 : 1;
+      return a.productName.localeCompare(b.productName);
+    });
+  }, [productsData, allReviews]);
+
   // Calculate dashboard metrics from actual data
   const metrics = useMemo(() => {
     const reviews = allReviews;
@@ -421,6 +460,19 @@ export default function Dashboard() {
       }
     });
   }, [allReviews, searchQuery, selectedSentiments, selectedSeverities, selectedStatuses, selectedMarketplaces, selectedRatings, dateRange, selectedProduct, sortBy]);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, selectedSentiments, selectedSeverities, selectedStatuses, selectedMarketplaces, selectedRatings, dateRange, selectedProduct, sortBy]);
+
+  // Paginated reviews
+  const paginatedReviews = useMemo(() => {
+    const startIndex = (currentPage - 1) * pageSize;
+    return filteredReviews.slice(startIndex, startIndex + pageSize);
+  }, [filteredReviews, currentPage, pageSize]);
+
+  const totalPages = Math.ceil(filteredReviews.length / pageSize);
 
   return (
     <div className="p-6 space-y-6">
@@ -750,9 +802,9 @@ export default function Dashboard() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">All products</SelectItem>
-                        {productsData?.products.map((product: any) => (
+                        {uniqueProducts.map((product) => (
                           <SelectItem key={`${product.platform}|${product.productId}`} value={`${product.platform}|${product.productId}`}>
-                            {product.productName} ({product.platform})
+                            {product.productName} ({product.platform}){!product.isTracked && " (untracked)"}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -850,19 +902,146 @@ export default function Dashboard() {
         </Collapsible>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredReviews.map((review) => (
-          <ReviewCard
-            key={review.id}
-            {...review}
-            onViewDetails={() => setSelectedReview(review)}
-          />
-        ))}
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-muted-foreground">
+            Showing {paginatedReviews.length} of {filteredReviews.length} reviews
+          </span>
+          <Select value={pageSize.toString()} onValueChange={(v) => { setPageSize(Number(v)); setCurrentPage(1); }}>
+            <SelectTrigger className="w-[100px]" data-testid="select-page-size">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="10">10</SelectItem>
+              <SelectItem value="25">25</SelectItem>
+              <SelectItem value="50">50</SelectItem>
+              <SelectItem value="100">100</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            size="icon"
+            variant={viewMode === "cards" ? "default" : "ghost"}
+            onClick={() => setViewMode("cards")}
+            data-testid="button-view-cards"
+          >
+            <LayoutGrid className="h-4 w-4" />
+          </Button>
+          <Button
+            size="icon"
+            variant={viewMode === "compact" ? "default" : "ghost"}
+            onClick={() => setViewMode("compact")}
+            data-testid="button-view-compact"
+          >
+            <List className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
+
+      {viewMode === "cards" ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {paginatedReviews.map((review) => (
+            <ReviewCard
+              key={review.id}
+              {...review}
+              onViewDetails={() => setSelectedReview(review)}
+            />
+          ))}
+        </div>
+      ) : (
+        <Card>
+          <div className="divide-y">
+            {paginatedReviews.map((review) => (
+              <div
+                key={review.id}
+                className="flex items-center gap-4 p-4 hover-elevate cursor-pointer"
+                onClick={() => setSelectedReview(review)}
+                data-testid={`row-review-${review.id}`}
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="font-medium truncate">{review.title}</span>
+                    <Badge variant="outline" className="text-xs shrink-0">
+                      {review.marketplace}
+                    </Badge>
+                  </div>
+                  <p className="text-sm text-muted-foreground truncate">{review.content}</p>
+                </div>
+                <div className="flex items-center gap-3 shrink-0">
+                  <Badge 
+                    variant={review.sentiment === "negative" ? "destructive" : review.sentiment === "positive" ? "default" : "secondary"}
+                    className="capitalize text-xs"
+                  >
+                    {review.sentiment}
+                  </Badge>
+                  <Badge 
+                    variant={review.severity === "critical" ? "destructive" : review.severity === "high" ? "destructive" : "outline"}
+                    className="capitalize text-xs"
+                  >
+                    {review.severity}
+                  </Badge>
+                  <span className="text-sm text-muted-foreground w-16 text-right">
+                    {format(new Date(review.createdAt), "MMM d")}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
 
       {filteredReviews.length === 0 && (
         <div className="text-center py-12">
           <p className="text-muted-foreground">No reviews found matching your filters</p>
+        </div>
+      )}
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-2 mt-6">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+            disabled={currentPage === 1}
+            data-testid="button-prev-page"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <div className="flex items-center gap-1">
+            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+              let pageNum: number;
+              if (totalPages <= 5) {
+                pageNum = i + 1;
+              } else if (currentPage <= 3) {
+                pageNum = i + 1;
+              } else if (currentPage >= totalPages - 2) {
+                pageNum = totalPages - 4 + i;
+              } else {
+                pageNum = currentPage - 2 + i;
+              }
+              return (
+                <Button
+                  key={pageNum}
+                  variant={currentPage === pageNum ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setCurrentPage(pageNum)}
+                  data-testid={`button-page-${pageNum}`}
+                >
+                  {pageNum}
+                </Button>
+              );
+            })}
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+            disabled={currentPage === totalPages}
+            data-testid="button-next-page"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
         </div>
       )}
 

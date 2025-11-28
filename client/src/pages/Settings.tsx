@@ -2,8 +2,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Mail, Zap, CheckCircle, XCircle, RefreshCw, Loader2, ShoppingCart, Store, UserCheck } from "lucide-react";
+import { Mail, Zap, CheckCircle, XCircle, RefreshCw, Loader2, ShoppingCart, Store, UserCheck, History, Trash2, RotateCcw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -14,6 +15,19 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useState } from "react";
+import { format } from "date-fns";
+import { SiAmazon, SiShopify } from "react-icons/si";
+import { WalmartLogo } from "@/components/WalmartLogo";
+
+interface ProductHistoryItem {
+  id: string;
+  userId: string;
+  platform: string;
+  productId: string;
+  productName: string;
+  deletedAt: string;
+  reviewsDeleted: number;
+}
 
 interface IntegrationStatus {
   name: string;
@@ -38,6 +52,45 @@ export default function Settings() {
   const { data: statusData, isLoading, refetch, isFetching } = useQuery<ConnectionStatusResponse>({
     queryKey: ['/api/integrations/status'],
   });
+
+  const { data: historyData } = useQuery<{ history: ProductHistoryItem[] }>({
+    queryKey: ['/api/products/history'],
+  });
+
+  const deleteHistoryMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await apiRequest("DELETE", `/api/products/history/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/products/history'] });
+      toast({
+        title: "History Cleared",
+        description: "Product history entry removed",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to delete history entry",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const getPlatformIcon = (platform: string) => {
+    switch (platform) {
+      case "Amazon":
+        return <SiAmazon className="h-4 w-4" />;
+      case "Shopify":
+        return <SiShopify className="h-4 w-4" />;
+      case "Walmart":
+        return <WalmartLogo className="h-4 w-4" />;
+      case "Mailbox":
+        return <Mail className="h-4 w-4" />;
+      default:
+        return <ShoppingCart className="h-4 w-4" />;
+    }
+  };
 
   const reconnectOutlookMutation = useMutation({
     mutationFn: async () => {
@@ -373,6 +426,72 @@ export default function Settings() {
           API credentials are securely managed through Replit's encrypted secrets system. 
           Status indicators show real-time connection health for each integration.
         </p>
+      </div>
+
+      {/* Product History Section */}
+      <div className="pt-8 border-t mt-8">
+        <div className="flex items-center gap-2 mb-4">
+          <History className="h-5 w-5 text-muted-foreground" />
+          <h2 className="text-xl font-semibold">Previously Tracked Products</h2>
+        </div>
+        <p className="text-sm text-muted-foreground mb-4">
+          Products you've removed from tracking. You can use these IDs to re-import them.
+        </p>
+        
+        {historyData?.history && historyData.history.length > 0 ? (
+          <div className="space-y-2">
+            {historyData.history.map((item) => (
+              <Card key={item.id} data-testid={`card-history-${item.id}`}>
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="p-2 bg-muted rounded-md shrink-0">
+                        {getPlatformIcon(item.platform)}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-medium truncate">{item.productName}</p>
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <span>{item.platform}</span>
+                          <span>-</span>
+                          <span className="font-mono text-xs">{item.productId}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 shrink-0">
+                      <div className="text-right text-sm">
+                        <p className="text-muted-foreground">
+                          Removed {format(new Date(item.deletedAt), "MMM d, yyyy")}
+                        </p>
+                        {item.reviewsDeleted ? (
+                          <Badge variant="destructive" className="text-xs">Reviews deleted</Badge>
+                        ) : (
+                          <Badge variant="secondary" className="text-xs">Reviews kept</Badge>
+                        )}
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => deleteHistoryMutation.mutate(item.id)}
+                        disabled={deleteHistoryMutation.isPending}
+                        data-testid={`button-delete-history-${item.id}`}
+                      >
+                        <Trash2 className="h-4 w-4 text-muted-foreground" />
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <Card>
+            <CardContent className="p-6 text-center text-muted-foreground">
+              <History className="h-8 w-8 mx-auto mb-2 opacity-50" />
+              <p>No product history yet</p>
+              <p className="text-sm">Removed products will appear here for easy re-adding</p>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
     </>

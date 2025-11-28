@@ -78,3 +78,22 @@ export const insertProductSchema = createInsertSchema(products).omit({
 
 export type InsertProduct = z.infer<typeof insertProductSchema>;
 export type Product = typeof products.$inferSelect;
+
+// Product history to track deleted products for easy re-adding
+export const productHistory = pgTable("product_history", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  platform: text("platform").notNull(),
+  productId: text("product_id").notNull(),
+  productName: text("product_name").notNull(),
+  deletedAt: timestamp("deleted_at").defaultNow(),
+  reviewsDeleted: integer("reviews_deleted").default(0), // Whether reviews were deleted too
+});
+
+export const insertProductHistorySchema = createInsertSchema(productHistory).omit({
+  id: true,
+  deletedAt: true,
+});
+
+export type InsertProductHistory = z.infer<typeof insertProductHistorySchema>;
+export type ProductHistory = typeof productHistory.$inferSelect;

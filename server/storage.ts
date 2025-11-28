@@ -5,9 +5,12 @@ import {
   type InsertReview,
   type Product,
   type InsertProduct,
+  type ProductHistory,
+  type InsertProductHistory,
   users,
   reviews,
   products,
+  productHistory,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { db } from "./db";
@@ -34,6 +37,11 @@ export interface IStorage {
   getReviewCountForProduct(platform: string, productId: string, userId?: string): Promise<number>;
   deleteProduct(productId: string, userId?: string): Promise<boolean>;
   deleteReviewsForProduct(platform: string, productId: string, userId?: string): Promise<number>;
+  
+  // Product history methods (user-scoped)
+  getProductHistory(userId: string): Promise<ProductHistory[]>;
+  addProductHistory(history: InsertProductHistory): Promise<ProductHistory>;
+  deleteProductHistory(id: string, userId: string): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
@@ -114,6 +122,18 @@ export class MemStorage implements IStorage {
 
   async deleteReviewsForProduct(platform: string, productId: string, userId?: string): Promise<number> {
     return 0;
+  }
+
+  async getProductHistory(userId: string): Promise<ProductHistory[]> {
+    return [];
+  }
+
+  async addProductHistory(history: InsertProductHistory): Promise<ProductHistory> {
+    throw new Error("Not implemented");
+  }
+
+  async deleteProductHistory(id: string, userId: string): Promise<boolean> {
+    return false;
   }
 }
 
@@ -281,6 +301,29 @@ export class DBStorage implements IStorage {
       .returning();
     
     return result.length;
+  }
+
+  // Product history methods
+  async getProductHistory(userId: string): Promise<ProductHistory[]> {
+    return await db.select()
+      .from(productHistory)
+      .where(eq(productHistory.userId, userId))
+      .orderBy(desc(productHistory.deletedAt));
+  }
+
+  async addProductHistory(history: InsertProductHistory): Promise<ProductHistory> {
+    const [created] = await db.insert(productHistory).values(history).returning();
+    return created;
+  }
+
+  async deleteProductHistory(id: string, userId: string): Promise<boolean> {
+    const result = await db.delete(productHistory)
+      .where(and(
+        eq(productHistory.id, id),
+        eq(productHistory.userId, userId)
+      ))
+      .returning();
+    return result.length > 0;
   }
 }
 
