@@ -494,6 +494,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const title = review.title || review.Title || '';
           const customerName = review.customerName || review['Customer Name'] || review.customer_name || 'Anonymous';
           const customerEmail = review.customerEmail || review['Customer Email'] || review.customer_email || '';
+          const productId = review.productId || review['Product ID'] || review.product_id || null;
           const rating = parseInt(review.rating || review.Rating || '0');
           const createdAt = review.createdAt || review['Created At'] || review.created_at || new Date().toISOString();
 
@@ -517,6 +518,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           processedReviews.push({
             id: `${marketplace.toLowerCase()}-${Date.now()}-${Math.random().toString(36).substring(7)}`,
             marketplace,
+            productId,
             title: title || `Review from ${customerName}`,
             content: reviewText,
             customerName,
@@ -558,7 +560,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             userId,
             externalReviewId,
             marketplace: processedReview.marketplace,
-            productId: null,
+            productId: processedReview.productId || null,
             title: processedReview.title,
             content: processedReview.content,
             customerName: processedReview.customerName,

@@ -315,18 +315,26 @@ export default function Dashboard() {
       return;
     }
 
-    const headers = ["Title", "Content", "Rating", "Sentiment", "Category", "Severity", "Status", "Marketplace", "Date"];
-    const csvData = filteredReviews.map(review => [
-      review.title,
-      review.content.replace(/"/g, '""'),
-      review.rating,
-      review.sentiment,
-      review.category,
-      review.severity,
-      review.status,
-      review.marketplace,
-      new Date(review.createdAt).toLocaleDateString()
-    ]);
+    const headers = ["Title", "Content", "Product ID", "Product Name", "Rating", "Sentiment", "Category", "Severity", "Status", "Marketplace", "Customer Name", "Date"];
+    const csvData = filteredReviews.map(review => {
+      const product = productsData?.products.find(
+        (p: any) => p.platform === review.marketplace && p.productId === review.productId
+      );
+      return [
+        review.title,
+        review.content.replace(/"/g, '""'),
+        review.productId || '',
+        product?.productName || review.productId || 'Unknown Product',
+        review.rating,
+        review.sentiment,
+        review.category,
+        review.severity,
+        review.status,
+        review.marketplace,
+        review.customerName || '',
+        new Date(review.createdAt).toLocaleDateString()
+      ];
+    });
 
     const csvContent = [
       headers.join(','),

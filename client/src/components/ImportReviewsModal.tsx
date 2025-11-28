@@ -96,9 +96,9 @@ export function ImportReviewsModal({ open, onOpenChange }: ImportReviewsModalPro
   };
 
   const handleDownloadTemplate = () => {
-    const csvContent = `Title,Content,Customer Name,Customer Email,Rating,Created At
-"Sample Review Title","This is a sample review content","John Doe","john@example.com",5,2024-01-15
-"Another Review","Great product!","Jane Smith","jane@example.com",4,2024-01-14`;
+    const csvContent = `Title,Content,Product ID,Customer Name,Customer Email,Rating,Created At
+"Sample Review Title","This is a sample review content","B0EXAMPLE123","John Doe","john@example.com",5,2024-01-15
+"Another Review","Great product!","B0EXAMPLE456","Jane Smith","jane@example.com",4,2024-01-14`;
 
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
