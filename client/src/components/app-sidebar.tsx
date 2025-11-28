@@ -1,5 +1,6 @@
 import { LayoutDashboard, Workflow, BarChart3, Upload, Filter, Settings, Mail, Grid, LogOut, User, HelpCircle } from "lucide-react";
-import { SiAmazon, SiShopify, SiWalmart } from "react-icons/si";
+import { SiAmazon, SiShopify } from "react-icons/si";
+import { WalmartLogo } from "@/components/WalmartLogo";
 import { Link, useLocation } from "wouter";
 import { useState, useMemo } from "react";
 import {
@@ -40,7 +41,7 @@ const mainMenuItems = [
 const marketplaces = [
   { title: "Amazon", icon: SiAmazon, color: "#FF9900" },
   { title: "Shopify", icon: SiShopify, color: "#7AB55C" },
-  { title: "Walmart", icon: SiWalmart, color: "#0071CE" },
+  { title: "Walmart", icon: WalmartLogo, color: undefined },
   { title: "Mailbox", icon: Mail, color: "#0078D4" },
 ];
 

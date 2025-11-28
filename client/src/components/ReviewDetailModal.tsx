@@ -11,7 +11,8 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Star, ThumbsUp, ThumbsDown, Minus, Send, Save, Mail, Sparkles, Copy, ExternalLink, Check } from "lucide-react";
-import { SiAmazon, SiShopify, SiWalmart } from "react-icons/si";
+import { SiAmazon, SiShopify } from "react-icons/si";
+import { WalmartLogo } from "@/components/WalmartLogo";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
@@ -21,7 +22,7 @@ import { useToast } from "@/hooks/use-toast";
 const marketplaceIcons = {
   Amazon: SiAmazon,
   Shopify: SiShopify,
-  Walmart: SiWalmart,
+  Walmart: WalmartLogo,
   Mailbox: Mail,
 };
 

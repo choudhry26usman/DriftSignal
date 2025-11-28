@@ -14,7 +14,8 @@ import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
-import { SiAmazon, SiShopify, SiWalmart } from "react-icons/si";
+import { SiAmazon, SiShopify } from "react-icons/si";
+import { WalmartLogo } from "@/components/WalmartLogo";
 
 interface ImportProductModalProps {
   open: boolean;
@@ -143,7 +144,7 @@ export function ImportProductModal({ open, onOpenChange, preselectedMarketplace 
                 </SelectItem>
                 <SelectItem value="Walmart">
                   <div className="flex items-center gap-2">
-                    <SiWalmart className="h-4 w-4" />
+                    <WalmartLogo className="h-4 w-4" />
                     Walmart
                   </div>
                 </SelectItem>

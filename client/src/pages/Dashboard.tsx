@@ -23,7 +23,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useLocation, useSearch } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { SiAmazon, SiShopify, SiWalmart } from "react-icons/si";
+import { SiAmazon, SiShopify } from "react-icons/si";
+import { WalmartLogo } from "@/components/WalmartLogo";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -472,7 +473,7 @@ export default function Dashboard() {
                       <div className="p-2 rounded-md bg-muted/50">
                         {product.platform === "Amazon" && <SiAmazon className="h-5 w-5" style={{ color: "#FF9900" }} />}
                         {product.platform === "Shopify" && <SiShopify className="h-5 w-5" style={{ color: "#7AB55C" }} />}
-                        {product.platform === "Walmart" && <SiWalmart className="h-5 w-5" style={{ color: "#0071CE" }} />}
+                        {product.platform === "Walmart" && <WalmartLogo className="h-5 w-5" />}
                         {product.platform === "Mailbox" && <Mail className="h-5 w-5" style={{ color: "#0078D4" }} />}
                       </div>
                       <div className="flex-1 min-w-0">

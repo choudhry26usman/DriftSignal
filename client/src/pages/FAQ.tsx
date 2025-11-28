@@ -21,7 +21,8 @@ import {
   Trash2,
   Play
 } from "lucide-react";
-import { SiAmazon, SiShopify, SiWalmart } from "react-icons/si";
+import { SiAmazon, SiShopify } from "react-icons/si";
+import { WalmartLogo } from "@/components/WalmartLogo";
 import { useTour } from "@/hooks/use-tour";
 
 const gettingStartedSteps = [
@@ -265,7 +266,7 @@ export default function FAQ() {
               <span className="text-xs text-muted-foreground text-center">Product URL or ASIN</span>
             </div>
             <div className="flex flex-col items-center gap-2 p-4 rounded-lg border">
-              <SiWalmart className="h-8 w-8" style={{ color: "#0071CE" }} />
+              <WalmartLogo className="h-8 w-8" />
               <span className="font-medium">Walmart</span>
               <span className="text-xs text-muted-foreground text-center">Product URL or ID</span>
             </div>
