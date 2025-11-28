@@ -154,44 +154,6 @@ export default function Analytics() {
         </div>
         
         <div className="flex items-center gap-3 flex-wrap">
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button 
-                size="sm" 
-                className="bg-primary text-primary-foreground rounded-full px-4 text-sm"
-                data-testid="button-date-range-header"
-              >
-                <Calendar className="h-4 w-4 mr-2" />
-                Date range
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="end">
-              <CalendarComponent
-                mode="range"
-                selected={{ from: dateRange.from, to: dateRange.to }}
-                onSelect={(range) => setDateRange({ from: range?.from, to: range?.to })}
-                numberOfMonths={2}
-              />
-            </PopoverContent>
-          </Popover>
-          
-          <Select value={selectedProduct} onValueChange={setSelectedProduct}>
-            <SelectTrigger 
-              className="w-auto bg-primary/20 border-primary/30 text-foreground rounded-full px-4 text-sm" 
-              data-testid="select-product-header"
-            >
-              <SelectValue placeholder="Product Select filter" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All products</SelectItem>
-              {products.map((product: any) => (
-                <SelectItem key={`${product.platform}-${product.productId}`} value={`${product.platform}-${product.productId}`}>
-                  {product.productName} ({product.platform})
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          
           <Collapsible open={filtersOpen} onOpenChange={setFiltersOpen}>
             <CollapsibleTrigger asChild>
               <Button 
