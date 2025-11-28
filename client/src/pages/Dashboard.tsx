@@ -63,6 +63,13 @@ export default function Dashboard() {
     const searchParams = new URLSearchParams(searchString);
     return searchParams.get('date') || "all";
   }, [searchString]);
+  
+  const productFilter = useMemo(() => {
+    const searchParams = new URLSearchParams(searchString);
+    return searchParams.get('productId') || "all";
+  }, [searchString]);
+  
+  const [, navigate] = useLocation();
 
 
 
@@ -166,6 +173,26 @@ export default function Dashboard() {
       platform: deletingProduct.platform,
       deleteReviews,
     });
+  };
+
+  const handleProductClick = (productId: string) => {
+    const currentParams = new URLSearchParams(searchString);
+    
+    if (productFilter === productId) {
+      currentParams.delete('productId');
+    } else {
+      currentParams.set('productId', productId);
+    }
+    
+    const newSearch = currentParams.toString();
+    navigate(newSearch ? `/?${newSearch}` : '/');
+  };
+
+  const clearProductFilter = () => {
+    const currentParams = new URLSearchParams(searchString);
+    currentParams.delete('productId');
+    const newSearch = currentParams.toString();
+    navigate(newSearch ? `/?${newSearch}` : '/');
   };
 
   const allReviews = useMemo(() => {
@@ -300,9 +327,11 @@ export default function Dashboard() {
         else if (dateFilter === "year") matchesDate = daysDiff <= 365;
       }
       
-      return matchesSearch && matchesSentiment && matchesSeverity && matchesStatus && matchesDate && matchesMarketplace;
+      const matchesProduct = productFilter === "all" || review.productId === productFilter;
+      
+      return matchesSearch && matchesSentiment && matchesSeverity && matchesStatus && matchesDate && matchesMarketplace && matchesProduct;
     });
-  }, [allReviews, marketplaceFilter, searchQuery, sentimentFilter, severityFilter, statusFilter, dateFilter]);
+  }, [allReviews, marketplaceFilter, searchQuery, sentimentFilter, severityFilter, statusFilter, dateFilter, productFilter]);
 
   return (
     <div className="p-6 space-y-6">
@@ -369,13 +398,23 @@ export default function Dashboard() {
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
               {productsData.products.map((product) => (
-                <Card key={product.id} className="hover-elevate" data-testid={`card-product-${product.productId}`}>
+                <Card 
+                  key={product.id} 
+                  className={`hover-elevate cursor-pointer transition-all ${
+                    productFilter === product.productId 
+                      ? 'ring-2 ring-primary bg-primary/5' 
+                      : ''
+                  }`}
+                  onClick={() => handleProductClick(product.productId)}
+                  data-testid={`card-product-${product.productId}`}
+                >
                   <CardContent className="p-4">
                     <div className="flex items-start gap-3">
                       <div className="p-2 rounded-md bg-muted/50">
                         {product.platform === "Amazon" && <SiAmazon className="h-5 w-5" style={{ color: "#FF9900" }} />}
                         {product.platform === "Shopify" && <SiShopify className="h-5 w-5" style={{ color: "#7AB55C" }} />}
                         {product.platform === "Walmart" && <SiWalmart className="h-5 w-5" style={{ color: "#0071CE" }} />}
+                        {product.platform === "Mailbox" && <Mail className="h-5 w-5" style={{ color: "#0078D4" }} />}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
@@ -383,8 +422,11 @@ export default function Dashboard() {
                             {product.platform}
                           </Badge>
                           <span className="text-xs text-muted-foreground font-mono">
-                            {product.productId}
+                            {product.productId.length > 20 ? `${product.productId.slice(0, 20)}...` : product.productId}
                           </span>
+                          {productFilter === product.productId && (
+                            <Badge variant="default" className="text-xs">Filtered</Badge>
+                          )}
                         </div>
                         <h4 className="text-sm font-medium line-clamp-2 mb-2" data-testid={`text-product-name-${product.productId}`}>
                           {product.productName}
@@ -402,7 +444,8 @@ export default function Dashboard() {
                             <Button
                               size="icon"
                               variant="ghost"
-                              onClick={() => {
+                              onClick={(e) => {
+                                e.stopPropagation();
                                 let url = '';
                                 if (product.platform === 'Amazon') {
                                   url = `https://www.amazon.com/dp/${product.productId}`;
@@ -419,7 +462,10 @@ export default function Dashboard() {
                             <Button
                               size="icon"
                               variant="ghost"
-                              onClick={() => handleRefreshProduct(product.productId, product.platform)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleRefreshProduct(product.productId, product.platform);
+                              }}
                               disabled={refreshingProductId === product.productId}
                               title="Refresh reviews"
                               data-testid={`button-refresh-${product.productId}`}
@@ -433,11 +479,14 @@ export default function Dashboard() {
                             <Button
                               size="icon"
                               variant="ghost"
-                              onClick={() => setDeletingProduct({
-                                productId: product.productId,
-                                platform: product.platform,
-                                productName: product.productName,
-                              })}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setDeletingProduct({
+                                  productId: product.productId,
+                                  platform: product.platform,
+                                  productName: product.productName,
+                                });
+                              }}
                               title="Remove product"
                               data-testid={`button-delete-${product.productId}`}
                             >
