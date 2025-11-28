@@ -31,9 +31,9 @@ export function SentimentTrendChart({ data }: SentimentTrendChartProps) {
 
   if (chartData.length === 0) {
     return (
-      <Card data-testid="chart-sentiment-trend" className="bg-white/95 border-0">
+      <Card data-testid="chart-sentiment-trend" className="bg-amber-50/95 border-0">
         <CardHeader>
-          <CardTitle className="text-slate-800">Sentiment Trends</CardTitle>
+          <CardTitle className="text-slate-800">Sentiment Trend</CardTitle>
         </CardHeader>
         <CardContent className="flex items-center justify-center h-[300px]">
           <p className="text-slate-500 text-sm">No review data available for trends</p>
@@ -43,7 +43,7 @@ export function SentimentTrendChart({ data }: SentimentTrendChartProps) {
   }
 
   return (
-    <Card data-testid="chart-sentiment-trend" className="bg-white/95 border-0">
+    <Card data-testid="chart-sentiment-trend" className="bg-amber-50/95 border-0">
       <CardHeader>
         <CardTitle className="text-slate-800">Sentiment Trend</CardTitle>
       </CardHeader>
@@ -94,7 +94,7 @@ export function CategoryDistributionChart({ data }: CategoryDistributionChartPro
   const total = chartData.reduce((sum, item) => sum + item.count, 0);
 
   return (
-    <Card data-testid="chart-category-distribution" className="bg-white/95 border-0">
+    <Card data-testid="chart-category-distribution" className="bg-amber-50/95 border-0">
       <CardHeader>
         <CardTitle className="text-slate-800">Category Distribution</CardTitle>
       </CardHeader>
@@ -142,7 +142,7 @@ export function MarketplaceDistributionChart({ data }: MarketplaceDistributionCh
   const chartData = Object.entries(data).map(([name, value]) => ({ name, value }));
 
   return (
-    <Card data-testid="chart-marketplace-distribution" className="bg-white/95 border-0">
+    <Card data-testid="chart-marketplace-distribution" className="bg-amber-50/95 border-0">
       <CardHeader>
         <CardTitle className="text-slate-800">Marketplace Breakdown</CardTitle>
       </CardHeader>
@@ -189,7 +189,7 @@ export function RatingDistributionChart({ data }: RatingDistributionChartProps) 
   }));
 
   return (
-    <Card data-testid="chart-rating-distribution" className="bg-white/95 border-0">
+    <Card data-testid="chart-rating-distribution" className="bg-amber-50/95 border-0">
       <CardHeader>
         <CardTitle className="text-slate-800">Rating Distribution</CardTitle>
       </CardHeader>
@@ -231,7 +231,7 @@ export function StatusDistributionChart({ data }: StatusDistributionChartProps) 
   }));
 
   return (
-    <Card data-testid="chart-status-distribution" className="bg-white/95 border-0">
+    <Card data-testid="chart-status-distribution" className="bg-amber-50/95 border-0">
       <CardHeader>
         <CardTitle className="text-slate-800">Review Status Distribution</CardTitle>
       </CardHeader>

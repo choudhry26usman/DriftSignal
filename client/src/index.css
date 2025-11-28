@@ -157,7 +157,7 @@
 
   body {
     @apply font-sans antialiased text-foreground;
-    background: linear-gradient(135deg, hsl(220, 50%, 6%) 0%, hsl(230, 45%, 10%) 50%, hsl(250, 40%, 14%) 100%);
+    background: linear-gradient(135deg, hsl(220, 60%, 8%) 0%, hsl(240, 50%, 12%) 50%, hsl(270, 45%, 15%) 100%);
     background-attachment: fixed;
     min-height: 100vh;
   }
