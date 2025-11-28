@@ -192,22 +192,36 @@ export default function Analytics() {
             </SelectContent>
           </Select>
           
-          <Collapsible open={filtersOpen} onOpenChange={setFiltersOpen}>
-            <CollapsibleTrigger asChild>
+          <Popover>
+            <PopoverTrigger asChild>
               <Button 
                 size="sm" 
-                className="bg-primary text-primary-foreground rounded-full px-4"
-                data-testid="button-toggle-filters"
+                className="bg-primary/20 border border-primary/30 text-foreground rounded-full px-4"
+                data-testid="button-sentiment-filter"
               >
-                Sentiment
-                {activeFilterCount > 0 && (
-                  <Badge variant="secondary" className="ml-2 h-5 px-1.5">
-                    {activeFilterCount}
-                  </Badge>
-                )}
+                {selectedSentiments.length > 0 
+                  ? selectedSentiments.map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(', ')
+                  : 'Sentiment'}
               </Button>
-            </CollapsibleTrigger>
-          </Collapsible>
+            </PopoverTrigger>
+            <PopoverContent className="w-48 p-2" align="end">
+              <div className="space-y-2">
+                {(['positive', 'neutral', 'negative'] as Sentiment[]).map(sentiment => (
+                  <div key={sentiment} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`sentiment-${sentiment}`}
+                      checked={selectedSentiments.includes(sentiment)}
+                      onCheckedChange={() => toggleSentiment(sentiment)}
+                      data-testid={`checkbox-sentiment-${sentiment}`}
+                    />
+                    <Label htmlFor={`sentiment-${sentiment}`} className="capitalize cursor-pointer">
+                      {sentiment}
+                    </Label>
+                  </div>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
           
           {activeFilterCount > 0 && (
             <Button variant="ghost" size="sm" onClick={handleClearFilters} data-testid="button-clear-all-filters">
