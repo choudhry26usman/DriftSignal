@@ -34,6 +34,7 @@ import { format } from "date-fns";
 type Marketplace = "Amazon" | "Shopify" | "Walmart" | "Mailbox";
 type Sentiment = "positive" | "neutral" | "negative";
 type Status = "open" | "in_progress" | "resolved";
+type Severity = "low" | "medium" | "high" | "critical";
 
 // Mock reviews removed - now using only real imported reviews from Amazon/other sources
 const mockReviews: any[] = [];
@@ -55,6 +56,7 @@ export default function Dashboard() {
   const [selectedMarketplaces, setSelectedMarketplaces] = useState<Marketplace[]>([]);
   const [selectedSentiments, setSelectedSentiments] = useState<Sentiment[]>([]);
   const [selectedStatuses, setSelectedStatuses] = useState<Status[]>([]);
+  const [selectedSeverities, setSelectedSeverities] = useState<Severity[]>([]);
   const [selectedRatings, setSelectedRatings] = useState<number[]>([]);
   const { toast } = useToast();
 
@@ -64,6 +66,7 @@ export default function Dashboard() {
     setSelectedMarketplaces([]);
     setSelectedSentiments([]);
     setSelectedStatuses([]);
+    setSelectedSeverities([]);
     setSelectedRatings([]);
   };
 
@@ -99,12 +102,21 @@ export default function Dashboard() {
     );
   };
 
+  const toggleSeverity = (severity: Severity) => {
+    setSelectedSeverities(prev =>
+      prev.includes(severity)
+        ? prev.filter(s => s !== severity)
+        : [...prev, severity]
+    );
+  };
+
   const activeFilterCount = 
     (dateRange.from || dateRange.to ? 1 : 0) +
     (selectedProduct && selectedProduct !== 'all' ? 1 : 0) +
     selectedMarketplaces.length +
     selectedSentiments.length +
     selectedStatuses.length +
+    selectedSeverities.length +
     selectedRatings.length;
   
   const marketplaceFilter = useMemo(() => {
@@ -377,29 +389,39 @@ export default function Dashboard() {
     return allReviews.filter((review) => {
       const matchesSearch = review.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                            review.content.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesSentiment = sentimentFilter === "all" || review.sentiment === sentimentFilter;
-      const matchesSeverity = severityFilter === "all" || review.severity === severityFilter;
-      const matchesStatus = statusFilter === "all" || review.status === statusFilter;
-      const matchesMarketplace = marketplaceFilter === "all" || review.marketplace === marketplaceFilter;
       
+      // Use new filter state variables
+      const matchesSentiment = selectedSentiments.length === 0 || selectedSentiments.includes(review.sentiment as Sentiment);
+      const matchesSeverity = selectedSeverities.length === 0 || selectedSeverities.includes(review.severity as Severity);
+      const matchesStatus = selectedStatuses.length === 0 || selectedStatuses.includes(review.status as Status);
+      const matchesMarketplace = selectedMarketplaces.length === 0 || selectedMarketplaces.includes(review.marketplace as Marketplace);
+      const matchesRating = selectedRatings.length === 0 || selectedRatings.includes(Math.round(review.rating));
+      
+      // Date range filter
       let matchesDate = true;
-      if (dateFilter !== "all") {
-        const now = new Date();
+      if (dateRange.from || dateRange.to) {
         const reviewDate = new Date(review.createdAt);
-        const daysDiff = Math.floor((now.getTime() - reviewDate.getTime()) / (1000 * 60 * 60 * 24));
-        
-        if (dateFilter === "today") matchesDate = daysDiff === 0;
-        else if (dateFilter === "week") matchesDate = daysDiff <= 7;
-        else if (dateFilter === "month") matchesDate = daysDiff <= 30;
-        else if (dateFilter === "quarter") matchesDate = daysDiff <= 90;
-        else if (dateFilter === "year") matchesDate = daysDiff <= 365;
+        if (dateRange.from && reviewDate < dateRange.from) matchesDate = false;
+        if (dateRange.to) {
+          const endOfDay = new Date(dateRange.to);
+          endOfDay.setHours(23, 59, 59, 999);
+          if (reviewDate > endOfDay) matchesDate = false;
+        }
       }
       
-      const matchesProduct = productFilter === "all" || review.productId === productFilter;
+      // Product filter
+      let matchesProduct = true;
+      if (selectedProduct && selectedProduct !== "all") {
+        const [platform, ...productIdParts] = selectedProduct.split('-');
+        const productId = productIdParts.join('-');
+        matchesProduct = review.marketplace === platform && review.productId === productId;
+      } else if (productFilter !== "all") {
+        matchesProduct = review.productId === productFilter;
+      }
       
-      return matchesSearch && matchesSentiment && matchesSeverity && matchesStatus && matchesDate && matchesMarketplace && matchesProduct;
+      return matchesSearch && matchesSentiment && matchesSeverity && matchesStatus && matchesDate && matchesMarketplace && matchesProduct && matchesRating;
     });
-  }, [allReviews, marketplaceFilter, searchQuery, sentimentFilter, severityFilter, statusFilter, dateFilter, productFilter]);
+  }, [allReviews, searchQuery, selectedSentiments, selectedSeverities, selectedStatuses, selectedMarketplaces, selectedRatings, dateRange, selectedProduct, productFilter]);
 
   return (
     <div className="p-6 space-y-6">
@@ -411,30 +433,6 @@ export default function Dashboard() {
           </p>
         </div>
         <div className="flex gap-2 flex-wrap items-center">
-          <Collapsible open={filtersOpen} onOpenChange={setFiltersOpen}>
-            <CollapsibleTrigger asChild>
-              <Button 
-                size="sm" 
-                className="bg-primary/20 border border-primary/30 text-foreground rounded-full px-4 text-sm"
-                data-testid="button-toggle-filters-dashboard"
-              >
-                Filter
-                {activeFilterCount > 0 && (
-                  <Badge variant="secondary" className="ml-2 h-5 px-1.5">
-                    {activeFilterCount}
-                  </Badge>
-                )}
-              </Button>
-            </CollapsibleTrigger>
-          </Collapsible>
-          
-          {activeFilterCount > 0 && (
-            <Button variant="ghost" size="sm" onClick={handleClearFilters} data-testid="button-clear-all-filters-dashboard">
-              <X className="h-4 w-4 mr-2" />
-              Clear
-            </Button>
-          )}
-          
           <Button 
             variant="default" 
             onClick={handleSyncEmails}
@@ -470,123 +468,6 @@ export default function Dashboard() {
           </Button>
         </div>
       </div>
-
-      <Collapsible open={filtersOpen} onOpenChange={setFiltersOpen}>
-        <CollapsibleContent>
-          <Card className="mb-6">
-            <CardContent className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <div className="space-y-2">
-                  <Label className="text-sm">Date Range</Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" size="sm" className="w-full justify-start text-sm" data-testid="button-date-range-filter-dashboard">
-                        <Calendar className="h-4 w-4 mr-2" />
-                        {dateRange.from && dateRange.to
-                          ? `${format(dateRange.from, 'MMM d')} - ${format(dateRange.to, 'MMM d, yyyy')}`
-                          : 'Select date range'}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <CalendarComponent
-                        mode="range"
-                        selected={{ from: dateRange.from, to: dateRange.to }}
-                        onSelect={(range) => setDateRange({ from: range?.from, to: range?.to })}
-                        numberOfMonths={2}
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-sm">Product</Label>
-                  <Select value={selectedProduct} onValueChange={setSelectedProduct}>
-                    <SelectTrigger className="text-sm" data-testid="select-product-filter-dashboard">
-                      <SelectValue placeholder="All products" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All products</SelectItem>
-                      {productsData?.products.map((product: any) => (
-                        <SelectItem key={`${product.platform}-${product.productId}`} value={`${product.platform}-${product.productId}`}>
-                          {product.productName} ({product.platform})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-sm">Marketplace</Label>
-                  <div className="flex flex-wrap gap-2">
-                    {(['Amazon', 'Shopify', 'Walmart', 'Mailbox'] as Marketplace[]).map(marketplace => (
-                      <Badge
-                        key={marketplace}
-                        variant={selectedMarketplaces.includes(marketplace) ? "default" : "outline"}
-                        className="cursor-pointer hover-elevate text-sm"
-                        onClick={() => toggleMarketplace(marketplace)}
-                        data-testid={`filter-marketplace-${marketplace.toLowerCase()}-dashboard`}
-                      >
-                        {marketplace}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-sm">Sentiment</Label>
-                  <div className="flex flex-wrap gap-2">
-                    {(['positive', 'neutral', 'negative'] as Sentiment[]).map(sentiment => (
-                      <Badge
-                        key={sentiment}
-                        variant={selectedSentiments.includes(sentiment) ? "default" : "outline"}
-                        className="cursor-pointer hover-elevate capitalize text-sm"
-                        onClick={() => toggleSentiment(sentiment)}
-                        data-testid={`filter-sentiment-${sentiment}-dashboard`}
-                      >
-                        {sentiment}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-sm">Status</Label>
-                  <div className="flex flex-wrap gap-2">
-                    {(['open', 'in_progress', 'resolved'] as Status[]).map(status => (
-                      <Badge
-                        key={status}
-                        variant={selectedStatuses.includes(status) ? "default" : "outline"}
-                        className="cursor-pointer hover-elevate capitalize text-sm"
-                        onClick={() => toggleStatus(status)}
-                        data-testid={`filter-status-${status}-dashboard`}
-                      >
-                        {status.replace('_', ' ')}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-sm">Rating</Label>
-                  <div className="flex flex-wrap gap-2">
-                    {[1, 2, 3, 4, 5].map(rating => (
-                      <Badge
-                        key={rating}
-                        variant={selectedRatings.includes(rating) ? "default" : "outline"}
-                        className="cursor-pointer hover-elevate text-sm"
-                        onClick={() => toggleRating(rating)}
-                        data-testid={`filter-rating-${rating}-dashboard`}
-                      >
-                        {rating} ★
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </CollapsibleContent>
-      </Collapsible>
 
       {productsData && productsData.products.length > 0 && (
         <Card data-testid="card-tracked-products">
@@ -746,7 +627,7 @@ export default function Dashboard() {
 
 
       <div className="space-y-4">
-        <div className="flex gap-4 flex-wrap">
+        <div className="flex gap-2 flex-wrap items-center">
           <div className="relative flex-1 min-w-[300px]">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
@@ -757,7 +638,165 @@ export default function Dashboard() {
               data-testid="input-search"
             />
           </div>
+          
+          <Collapsible open={filtersOpen} onOpenChange={setFiltersOpen}>
+            <CollapsibleTrigger asChild>
+              <Button 
+                size="sm" 
+                className="bg-primary/20 border border-primary/30 text-foreground rounded-full px-4 text-sm"
+                data-testid="button-toggle-filters-dashboard"
+              >
+                Filter
+                {activeFilterCount > 0 && (
+                  <Badge variant="secondary" className="ml-2 h-5 px-1.5">
+                    {activeFilterCount}
+                  </Badge>
+                )}
+              </Button>
+            </CollapsibleTrigger>
+          </Collapsible>
+          
+          {activeFilterCount > 0 && (
+            <Button variant="ghost" size="sm" onClick={handleClearFilters} data-testid="button-clear-all-filters-dashboard">
+              <X className="h-4 w-4 mr-2" />
+              Clear
+            </Button>
+          )}
         </div>
+        
+        <Collapsible open={filtersOpen} onOpenChange={setFiltersOpen}>
+          <CollapsibleContent>
+            <Card>
+              <CardContent className="p-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                  <div className="space-y-2">
+                    <Label className="text-sm">Date Range</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" size="sm" className="w-full justify-start text-sm" data-testid="button-date-range-filter-dashboard">
+                          <Calendar className="h-4 w-4 mr-2" />
+                          {dateRange.from && dateRange.to
+                            ? `${format(dateRange.from, 'MMM d')} - ${format(dateRange.to, 'MMM d, yyyy')}`
+                            : 'Select date range'}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <CalendarComponent
+                          mode="range"
+                          selected={{ from: dateRange.from, to: dateRange.to }}
+                          onSelect={(range) => setDateRange({ from: range?.from, to: range?.to })}
+                          numberOfMonths={2}
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-sm">Product</Label>
+                    <Select value={selectedProduct} onValueChange={setSelectedProduct}>
+                      <SelectTrigger className="text-sm" data-testid="select-product-filter-dashboard">
+                        <SelectValue placeholder="All products" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All products</SelectItem>
+                        {productsData?.products.map((product: any) => (
+                          <SelectItem key={`${product.platform}-${product.productId}`} value={`${product.platform}-${product.productId}`}>
+                            {product.productName} ({product.platform})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-sm">Marketplace</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {(['Amazon', 'Shopify', 'Walmart', 'Mailbox'] as Marketplace[]).map(marketplace => (
+                        <Badge
+                          key={marketplace}
+                          variant={selectedMarketplaces.includes(marketplace) ? "default" : "outline"}
+                          className="cursor-pointer hover-elevate text-sm"
+                          onClick={() => toggleMarketplace(marketplace)}
+                          data-testid={`filter-marketplace-${marketplace.toLowerCase()}-dashboard`}
+                        >
+                          {marketplace}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-sm">Sentiment</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {(['positive', 'neutral', 'negative'] as Sentiment[]).map(sentiment => (
+                        <Badge
+                          key={sentiment}
+                          variant={selectedSentiments.includes(sentiment) ? "default" : "outline"}
+                          className="cursor-pointer hover-elevate capitalize text-sm"
+                          onClick={() => toggleSentiment(sentiment)}
+                          data-testid={`filter-sentiment-${sentiment}-dashboard`}
+                        >
+                          {sentiment}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-sm">Status</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {(['open', 'in_progress', 'resolved'] as Status[]).map(status => (
+                        <Badge
+                          key={status}
+                          variant={selectedStatuses.includes(status) ? "default" : "outline"}
+                          className="cursor-pointer hover-elevate capitalize text-sm"
+                          onClick={() => toggleStatus(status)}
+                          data-testid={`filter-status-${status}-dashboard`}
+                        >
+                          {status.replace('_', ' ')}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-sm">Severity</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {(['low', 'medium', 'high', 'critical'] as Severity[]).map(severity => (
+                        <Badge
+                          key={severity}
+                          variant={selectedSeverities.includes(severity) ? "default" : "outline"}
+                          className="cursor-pointer hover-elevate capitalize text-sm"
+                          onClick={() => toggleSeverity(severity)}
+                          data-testid={`filter-severity-${severity}-dashboard`}
+                        >
+                          {severity}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-sm">Rating</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {[1, 2, 3, 4, 5].map(rating => (
+                        <Badge
+                          key={rating}
+                          variant={selectedRatings.includes(rating) ? "default" : "outline"}
+                          className="cursor-pointer hover-elevate text-sm"
+                          onClick={() => toggleRating(rating)}
+                          data-testid={`filter-rating-${rating}-dashboard`}
+                        >
+                          {rating} ★
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </CollapsibleContent>
+        </Collapsible>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
