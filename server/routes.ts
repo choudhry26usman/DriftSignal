@@ -1414,53 +1414,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const productName = `Shopify Product ${productId.split('/').pop()}`;
       
-      console.log(`Processing ${result.reviews.length} Shopify reviews...`);
+      console.log(`Processing ${result.reviews.length} Shopify reviews in parallel...`);
       
-      // Process each review through AI
-      const processedReviews = [];
-      for (const review of result.reviews) {
-        try {
-          const reviewText = review.content || '';
-          const userName = review.author || 'Anonymous';
-          const reviewTitle = review.title || 'Review';
-          
-          // Analyze the review
-          const analysis = await analyzeReview(
-            reviewText,
-            userName,
-            "Shopify"
-          );
+      // Process reviews in parallel with concurrency limit of 5
+      const CONCURRENCY_LIMIT = 5;
+      const processedReviews: Array<{
+        id: string;
+        marketplace: "Shopify";
+        title: string;
+        content: string;
+        customerName: string;
+        customerEmail: string;
+        rating: number;
+        sentiment: "positive" | "negative" | "neutral";
+        category: string;
+        severity: "low" | "medium" | "high" | "critical";
+        status: "open";
+        createdAt: Date;
+        aiSuggestedReply: string;
+        verified: boolean;
+      }> = [];
+      
+      // Helper function to process a single review
+      const processReview = async (review: { content?: string; author?: string; title?: string; rating: number; createdAt: string; verified?: boolean }) => {
+        const reviewText = review.content || '';
+        const userName = review.author || 'Anonymous';
+        const reviewTitle = review.title || 'Review';
+        
+        // Run analysis and reply generation in parallel
+        const [analysis, aiReply] = await Promise.all([
+          analyzeReview(reviewText, userName, "Shopify"),
+          generateReply(reviewText, userName, "Shopify", "neutral", "low")
+        ]);
 
-          // Generate AI reply
-          const aiReply = await generateReply(
-            reviewText,
-            userName,
-            "Shopify",
-            analysis.sentiment,
-            analysis.severity
-          );
-
-          const processedReview = {
-            id: `shopify-${productId}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-            marketplace: "Shopify" as const,
-            title: reviewTitle,
-            content: reviewText,
-            customerName: userName,
-            customerEmail: `${userName.toLowerCase().replace(/\s+/g, '.')}@shopify.customer`,
-            rating: review.rating,
-            sentiment: analysis.sentiment,
-            category: analysis.category,
-            severity: analysis.severity,
-            status: "open",
-            createdAt: new Date(review.createdAt),
-            aiSuggestedReply: aiReply,
-            verified: review.verified || false,
-          };
-
-          processedReviews.push(processedReview);
-          console.log(`✓ Processed review from ${userName} (${analysis.sentiment}/${analysis.severity})`);
-        } catch (error) {
-          console.error(`Failed to process review:`, error);
+        return {
+          id: `shopify-${productId}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          marketplace: "Shopify" as const,
+          title: reviewTitle,
+          content: reviewText,
+          customerName: userName,
+          customerEmail: `${userName.toLowerCase().replace(/\s+/g, '.')}@shopify.customer`,
+          rating: review.rating,
+          sentiment: analysis.sentiment as "positive" | "negative" | "neutral",
+          category: analysis.category,
+          severity: analysis.severity as "low" | "medium" | "high" | "critical",
+          status: "open" as const,
+          createdAt: new Date(review.createdAt),
+          aiSuggestedReply: aiReply,
+          verified: review.verified || false,
+        };
+      };
+      
+      // Process reviews in batches for controlled concurrency
+      for (let i = 0; i < result.reviews.length; i += CONCURRENCY_LIMIT) {
+        const batch = result.reviews.slice(i, i + CONCURRENCY_LIMIT);
+        console.log(`Processing batch ${Math.floor(i / CONCURRENCY_LIMIT) + 1}/${Math.ceil(result.reviews.length / CONCURRENCY_LIMIT)} (${batch.length} reviews)...`);
+        
+        const batchResults = await Promise.allSettled(batch.map(processReview));
+        
+        for (const result of batchResults) {
+          if (result.status === 'fulfilled') {
+            processedReviews.push(result.value);
+            console.log(`✓ Processed review from ${result.value.customerName} (${result.value.sentiment}/${result.value.severity})`);
+          } else {
+            console.error(`Failed to process review:`, result.reason);
+          }
         }
       }
 
@@ -1537,53 +1555,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const productName = result.productName;
       const productId = result.productId;
       
-      console.log(`Processing ${result.reviews.length} Walmart reviews for "${productName}"...`);
+      console.log(`Processing ${result.reviews.length} Walmart reviews for "${productName}" in parallel...`);
       
-      // Process each review through AI
-      const processedReviews = [];
-      for (const review of result.reviews) {
-        try {
-          const reviewText = review.text || '';
-          const userName = review.reviewerName || 'Anonymous';
-          const reviewTitle = review.title || 'Review';
-          
-          // Analyze the review
-          const analysis = await analyzeReview(
-            reviewText,
-            userName,
-            "Walmart"
-          );
+      // Process reviews in parallel with concurrency limit of 5
+      const CONCURRENCY_LIMIT = 5;
+      const processedReviews: Array<{
+        id: string;
+        marketplace: "Walmart";
+        title: string;
+        content: string;
+        customerName: string;
+        customerEmail: string;
+        rating: number;
+        sentiment: "positive" | "negative" | "neutral";
+        category: string;
+        severity: "low" | "medium" | "high" | "critical";
+        status: "open";
+        createdAt: Date;
+        aiSuggestedReply: string;
+        verified: boolean;
+      }> = [];
+      
+      // Helper function to process a single review
+      const processReview = async (review: { text?: string; reviewerName?: string; title?: string; rating: number; date: string }) => {
+        const reviewText = review.text || '';
+        const userName = review.reviewerName || 'Anonymous';
+        const reviewTitle = review.title || 'Review';
+        
+        // Run analysis and reply generation in parallel for each review
+        const [analysis, aiReply] = await Promise.all([
+          analyzeReview(reviewText, userName, "Walmart"),
+          generateReply(reviewText, userName, "Walmart", "neutral", "low") // Initial call, will be fast
+        ]);
 
-          // Generate AI reply
-          const aiReply = await generateReply(
-            reviewText,
-            userName,
-            "Walmart",
-            analysis.sentiment,
-            analysis.severity
-          );
-
-          const processedReview = {
-            id: `walmart-${productId}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-            marketplace: "Walmart" as const,
-            title: reviewTitle,
-            content: reviewText,
-            customerName: userName,
-            customerEmail: `${userName.toLowerCase().replace(/\s+/g, '.')}@walmart.customer`,
-            rating: review.rating,
-            sentiment: analysis.sentiment,
-            category: analysis.category,
-            severity: analysis.severity,
-            status: "open",
-            createdAt: new Date(review.date),
-            aiSuggestedReply: aiReply,
-            verified: true,
-          };
-
-          processedReviews.push(processedReview);
-          console.log(`✓ Processed review from ${userName} (${analysis.sentiment}/${analysis.severity})`);
-        } catch (error) {
-          console.error(`Failed to process review:`, error);
+        return {
+          id: `walmart-${productId}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          marketplace: "Walmart" as const,
+          title: reviewTitle,
+          content: reviewText,
+          customerName: userName,
+          customerEmail: `${userName.toLowerCase().replace(/\s+/g, '.')}@walmart.customer`,
+          rating: review.rating,
+          sentiment: analysis.sentiment as "positive" | "negative" | "neutral",
+          category: analysis.category,
+          severity: analysis.severity as "low" | "medium" | "high" | "critical",
+          status: "open" as const,
+          createdAt: new Date(review.date),
+          aiSuggestedReply: aiReply,
+          verified: true,
+        };
+      };
+      
+      // Process reviews in batches for controlled concurrency
+      for (let i = 0; i < result.reviews.length; i += CONCURRENCY_LIMIT) {
+        const batch = result.reviews.slice(i, i + CONCURRENCY_LIMIT);
+        console.log(`Processing batch ${Math.floor(i / CONCURRENCY_LIMIT) + 1}/${Math.ceil(result.reviews.length / CONCURRENCY_LIMIT)} (${batch.length} reviews)...`);
+        
+        const batchResults = await Promise.allSettled(batch.map(processReview));
+        
+        for (const result of batchResults) {
+          if (result.status === 'fulfilled') {
+            processedReviews.push(result.value);
+            console.log(`✓ Processed review from ${result.value.customerName} (${result.value.sentiment}/${result.value.severity})`);
+          } else {
+            console.error(`Failed to process review:`, result.reason);
+          }
         }
       }
 
