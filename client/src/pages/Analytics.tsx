@@ -8,7 +8,7 @@ import {
   StatusDistributionChart,
   ResponseMetricsCard
 } from "@/components/AnalyticsCharts";
-import { TrendingUp, TrendingDown, Star, Target, Calendar, Filter, X, Download } from "lucide-react";
+import { TrendingUp, TrendingDown, Star, Target, Calendar, Filter, X, Download, FileSpreadsheet, Database } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -25,7 +25,9 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { format } from "date-fns";
 
 type Marketplace = "Amazon" | "Shopify" | "Walmart" | "Mailbox";
@@ -46,6 +48,7 @@ export default function Analytics() {
   const [selectedSeverities, setSelectedSeverities] = useState<Severity[]>([]);
   const [selectedRatings, setSelectedRatings] = useState<number[]>([]);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
 
   // Fetch tracked products
   const { data: productsData } = useQuery<{ products: any[] }>({
@@ -102,6 +105,13 @@ export default function Analytics() {
   const ratingCounts = analyticsData?.ratingCounts || {};
   const statusCounts = analyticsData?.statusCounts || {};
   const responseMetrics = analyticsData?.responseMetrics || { avgTimeToProgress: 0, resolvedWithin48h: 0, totalResolved: 0 };
+
+  // Fetch all reviews for full data export
+  const { data: allReviewsData } = useQuery<{ reviews: any[]; total: number }>({
+    queryKey: ['/api/reviews/imported'],
+  });
+
+  const allReviews = allReviewsData?.reviews || [];
 
   const handleClearFilters = () => {
     setDateRange({ from: undefined, to: undefined });
@@ -250,8 +260,85 @@ export default function Analytics() {
 
     toast({
       title: "Export Successful",
-      description: "Analytics data exported to CSV file.",
+      description: "Filtered analytics data exported to CSV file.",
     });
+    setExportDialogOpen(false);
+  };
+
+  // Export all raw review data for offline analysis
+  const handleExportAllData = () => {
+    if (allReviews.length === 0) {
+      toast({
+        title: "No Data to Export",
+        description: "No reviews available to export.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const escapeCell = (value: string | number | null | undefined): string => {
+      if (value === null || value === undefined) return '""';
+      const str = String(value);
+      return `"${str.replace(/"/g, '""')}"`;
+    };
+
+    const csvRows: string[] = [];
+    
+    // Header row with all fields
+    csvRows.push([
+      escapeCell("ID"),
+      escapeCell("Product ID"),
+      escapeCell("Product Name"),
+      escapeCell("Marketplace"),
+      escapeCell("Customer Name"),
+      escapeCell("Rating"),
+      escapeCell("Review Title"),
+      escapeCell("Review Content"),
+      escapeCell("Sentiment"),
+      escapeCell("Category"),
+      escapeCell("Severity"),
+      escapeCell("Status"),
+      escapeCell("AI Suggested Reply"),
+      escapeCell("Review Date"),
+      escapeCell("Created At"),
+    ].join(","));
+
+    // Data rows
+    allReviews.forEach(review => {
+      csvRows.push([
+        escapeCell(review.id),
+        escapeCell(review.productId),
+        escapeCell(review.productName),
+        escapeCell(review.marketplace),
+        escapeCell(review.customerName),
+        escapeCell(review.rating),
+        escapeCell(review.title),
+        escapeCell(review.content),
+        escapeCell(review.sentiment),
+        escapeCell(review.category),
+        escapeCell(review.severity),
+        escapeCell(review.status),
+        escapeCell(review.aiSuggestedReply),
+        escapeCell(review.reviewDate),
+        escapeCell(review.createdAt),
+      ].join(","));
+    });
+
+    const csvContent = csvRows.join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `driftsignal-all-reviews-${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    toast({
+      title: "Export Successful",
+      description: `Exported ${allReviews.length} reviews to CSV file.`,
+    });
+    setExportDialogOpen(false);
   };
 
   return (
@@ -265,15 +352,107 @@ export default function Analytics() {
         </div>
         
         <div className="flex items-center gap-3 flex-wrap">
-          <Button 
-            size="sm" 
-            variant="outline"
-            onClick={handleExportAnalytics}
-            data-testid="button-export-analytics"
-          >
-            <Download className="h-4 w-4 mr-2" />
-            Export
-          </Button>
+          <Dialog open={exportDialogOpen} onOpenChange={setExportDialogOpen}>
+            <DialogTrigger asChild>
+              <Button 
+                size="sm" 
+                variant="outline"
+                data-testid="button-export-analytics"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Export
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Export Data</DialogTitle>
+                <DialogDescription>
+                  Choose what data to export for your analysis
+                </DialogDescription>
+              </DialogHeader>
+              <Tabs defaultValue="filtered" className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="filtered" data-testid="tab-filtered-export">
+                    <FileSpreadsheet className="h-4 w-4 mr-2" />
+                    Filtered
+                  </TabsTrigger>
+                  <TabsTrigger value="all" data-testid="tab-all-export">
+                    <Database className="h-4 w-4 mr-2" />
+                    All Data
+                  </TabsTrigger>
+                </TabsList>
+                <TabsContent value="filtered" className="mt-4 space-y-4">
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-base">Filtered Analytics Export</CardTitle>
+                      <CardDescription>
+                        Export summary statistics based on your current filters
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                      <div className="text-sm text-muted-foreground">
+                        <p>Includes:</p>
+                        <ul className="list-disc list-inside mt-1 space-y-1">
+                          <li>Summary statistics</li>
+                          <li>Category distribution</li>
+                          <li>Marketplace breakdown</li>
+                          <li>Rating & status distribution</li>
+                          <li>Weekly sentiment trends</li>
+                        </ul>
+                      </div>
+                      {activeFilterCount > 0 && (
+                        <Badge variant="secondary" className="mt-2">
+                          {activeFilterCount} filter{activeFilterCount > 1 ? 's' : ''} applied
+                        </Badge>
+                      )}
+                    </CardContent>
+                  </Card>
+                  <Button 
+                    onClick={handleExportAnalytics} 
+                    className="w-full"
+                    data-testid="button-download-filtered"
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Download Filtered Data
+                  </Button>
+                </TabsContent>
+                <TabsContent value="all" className="mt-4 space-y-4">
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-base">Full Data Export</CardTitle>
+                      <CardDescription>
+                        Export all raw review data for offline analysis
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                      <div className="text-sm text-muted-foreground">
+                        <p>Includes every field for each review:</p>
+                        <ul className="list-disc list-inside mt-1 space-y-1">
+                          <li>Product details & marketplace</li>
+                          <li>Customer name & rating</li>
+                          <li>Review title & content</li>
+                          <li>AI analysis (sentiment, category, severity)</li>
+                          <li>Status & AI suggested reply</li>
+                          <li>All timestamps</li>
+                        </ul>
+                      </div>
+                      <Badge variant="outline" className="mt-2">
+                        {allReviews.length} total review{allReviews.length !== 1 ? 's' : ''}
+                      </Badge>
+                    </CardContent>
+                  </Card>
+                  <Button 
+                    onClick={handleExportAllData} 
+                    className="w-full"
+                    data-testid="button-download-all"
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Download All Data
+                  </Button>
+                </TabsContent>
+              </Tabs>
+            </DialogContent>
+          </Dialog>
           
           <Collapsible open={filtersOpen} onOpenChange={setFiltersOpen}>
             <CollapsibleTrigger asChild>
