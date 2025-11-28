@@ -1824,6 +1824,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const apiKey = process.env.AI_INTEGRATIONS_OPENROUTER_API_KEY;
+      const baseUrl = process.env.AI_INTEGRATIONS_OPENROUTER_BASE_URL || "https://openrouter.ai/api/v1";
+      
       if (!apiKey) {
         return res.status(500).json({ error: "AI service not configured" });
       }
@@ -1855,16 +1857,16 @@ Workflow Board statuses:
 
 Be concise, friendly, and helpful. Focus on answering questions about using DriftSignal. If asked about topics outside the platform, politely redirect to DriftSignal-related help.`;
 
-      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      const response = await fetch(`${baseUrl}/chat/completions`, {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${apiKey}`,
           "Content-Type": "application/json",
-          "HTTP-Referer": "https://replit.com",
+          "HTTP-Referer": "https://driftsignal.replit.app",
           "X-Title": "DriftSignal Assistant",
         },
         body: JSON.stringify({
-          model: "x-ai/grok-3-fast",
+          model: "x-ai/grok-4.1-fast",
           messages: [
             { role: "system", content: systemPrompt },
             { role: "user", content: question }
