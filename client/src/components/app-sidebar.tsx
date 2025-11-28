@@ -1,7 +1,7 @@
 import { LayoutDashboard, Workflow, BarChart3, Upload, Filter, Settings, Mail, Grid, LogOut, User, HelpCircle } from "lucide-react";
 import { SiAmazon, SiShopify } from "react-icons/si";
 import { WalmartLogo } from "@/components/WalmartLogo";
-import { Link, useLocation } from "wouter";
+import { Link, useLocation, useSearch } from "wouter";
 import { useState, useMemo } from "react";
 import {
   Sidebar,
@@ -47,6 +47,7 @@ const marketplaces = [
 
 export function AppSidebar() {
   const [location, navigate] = useLocation();
+  const searchString = useSearch();
   const [importModalOpen, setImportModalOpen] = useState(false);
   const [filtersModalOpen, setFiltersModalOpen] = useState(false);
   const { user } = useAuth();
@@ -76,15 +77,11 @@ export function AppSidebar() {
   };
   
   const activeMarketplace = useMemo(() => {
-    // Extract search params from location properly
-    const searchString = location.includes('?') ? location.split('?')[1] : '';
     const searchParams = new URLSearchParams(searchString);
     return searchParams.get('marketplace');
-  }, [location]);
+  }, [searchString]);
 
   const handleMarketplaceClick = (marketplace: string) => {
-    // Extract search params from location properly
-    const searchString = location.includes('?') ? location.split('?')[1] : '';
     const currentParams = new URLSearchParams(searchString);
     const currentMarketplace = currentParams.get('marketplace');
     
@@ -101,8 +98,6 @@ export function AppSidebar() {
   };
 
   const handleClearFilter = () => {
-    // Extract search params from location properly
-    const searchString = location.includes('?') ? location.split('?')[1] : '';
     const newParams = new URLSearchParams(searchString);
     newParams.delete('marketplace');
     const newSearch = newParams.toString();
