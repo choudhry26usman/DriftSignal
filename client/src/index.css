@@ -271,7 +271,7 @@
 }
 
 .shepherd-header {
-  background: hsl(var(--primary) / 0.1);
+  background: hsl(220 50% 12%);
   border-bottom: 1px solid hsl(var(--border));
   padding: 1rem 1.25rem;
   border-radius: 0.75rem 0.75rem 0 0;
