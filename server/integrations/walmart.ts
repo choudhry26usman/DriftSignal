@@ -79,7 +79,14 @@ function extractProductId(url: string): string | null {
 }
 
 /**
- * Fetch Walmart Canada product details and reviews using Apify
+ * Helper to wait/sleep for a given number of milliseconds
+ */
+function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+/**
+ * Fetch Walmart Canada product details and reviews using Apify (async with polling)
  * @param productUrl - Full Walmart.ca product URL
  * @param maxReviews - Maximum number of reviews to fetch (default 50)
  */
@@ -96,36 +103,102 @@ async function fetchWalmartCanadaProduct(productUrl: string, maxReviews: number 
   console.log('[Walmart.ca] Starting Apify actor for product:', productId);
 
   try {
-    // Start the Apify actor run synchronously and get dataset items
-    const actorId = 'tri_angle~walmart-reviews-scraper';
-    const runUrl = `https://api.apify.com/v2/acts/${actorId}/run-sync-get-dataset-items?token=${APIFY_API_TOKEN}`;
+    // Step 1: Start the actor run asynchronously
+    // Try web_wanderer's actor first as it explicitly supports walmart.ca
+    const actorId = 'web_wanderer~walmart-reviews-scraper';
+    const startRunUrl = `https://api.apify.com/v2/acts/${actorId}/runs?token=${APIFY_API_TOKEN}`;
     
-    const response = await fetch(runUrl, {
+    // Calculate number of pages (roughly 10 reviews per page)
+    const pageLimit = Math.ceil(maxReviews / 10);
+    
+    const startResponse = await fetch(startRunUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        startUrls: [{ url: productUrl }],
-        maxProductsPerStartUrl: 1,
-        maxReviewsPerProduct: maxReviews
+        product_ids: [productUrl],
+        limit: pageLimit,
+        sort: "submission-desc",
+        ratings: ["all"],
+        vp: false,
+        reg: "CA",
+        lang: "en"
       })
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('[Walmart.ca] Apify error response:', errorText);
+    if (!startResponse.ok) {
+      const errorText = await startResponse.text();
+      console.error('[Walmart.ca] Apify start error:', errorText);
       
-      if (response.status === 401) {
+      if (startResponse.status === 401) {
         throw new Error("Apify API authentication failed. Please verify your APIFY_API_TOKEN is correct.");
-      } else if (response.status === 402) {
+      } else if (startResponse.status === 402) {
         throw new Error("Apify API usage limit exceeded. Please check your Apify account credits.");
       } else {
-        throw new Error(`Apify API request failed with status ${response.status}`);
+        throw new Error(`Apify API request failed with status ${startResponse.status}`);
       }
     }
 
-    const data: any[] = await response.json();
+    const runData = await startResponse.json();
+    const runId = runData.data?.id;
+    const defaultDatasetId = runData.data?.defaultDatasetId;
+
+    if (!runId) {
+      throw new Error("Failed to start Apify actor run - no run ID returned");
+    }
+
+    console.log(`[Walmart.ca] Actor run started: ${runId}`);
+
+    // Step 2: Poll for run completion (max 3 minutes)
+    const maxWaitTime = 180000; // 3 minutes
+    const pollInterval = 5000; // 5 seconds
+    let elapsedTime = 0;
+    let runStatus = 'RUNNING';
+
+    while (runStatus === 'RUNNING' || runStatus === 'READY') {
+      if (elapsedTime >= maxWaitTime) {
+        console.warn('[Walmart.ca] Actor run timed out after 3 minutes');
+        break;
+      }
+
+      await sleep(pollInterval);
+      elapsedTime += pollInterval;
+
+      const statusUrl = `https://api.apify.com/v2/actor-runs/${runId}?token=${APIFY_API_TOKEN}`;
+      const statusResponse = await fetch(statusUrl);
+      
+      if (statusResponse.ok) {
+        const statusData = await statusResponse.json();
+        runStatus = statusData.data?.status || 'FAILED';
+        console.log(`[Walmart.ca] Run status: ${runStatus} (${Math.round(elapsedTime / 1000)}s elapsed)`);
+      } else {
+        console.warn('[Walmart.ca] Failed to check run status');
+        break;
+      }
+    }
+
+    if (runStatus !== 'SUCCEEDED') {
+      console.warn(`[Walmart.ca] Actor run did not succeed: ${runStatus}`);
+      // Return empty result instead of throwing error
+      return {
+        productName: 'Unknown Product',
+        productId,
+        reviews: [],
+        totalReviews: 0,
+        averageRating: 0
+      };
+    }
+
+    // Step 3: Fetch the dataset items
+    const datasetUrl = `https://api.apify.com/v2/datasets/${defaultDatasetId}/items?token=${APIFY_API_TOKEN}`;
+    const datasetResponse = await fetch(datasetUrl);
+
+    if (!datasetResponse.ok) {
+      throw new Error(`Failed to fetch dataset: ${datasetResponse.status}`);
+    }
+
+    const data: any[] = await datasetResponse.json();
     console.log('[Walmart.ca] Apify returned', data.length, 'items');
 
     if (!data || data.length === 0) {
@@ -147,20 +220,24 @@ async function fetchWalmartCanadaProduct(productUrl: string, maxReviews: number 
     const reviews: WalmartReviewData[] = [];
     
     for (const item of data) {
-      // Try to get product name from any item that has it
-      if (item.productName || item.product_name || item.title) {
-        productName = item.productName || item.product_name || item.title;
+      // Try to get product name from any item that has it (web_wanderer format)
+      if (item.itemName) {
+        productName = item.itemName;
+      } else if (item.product?.name) {
+        productName = item.product.name;
+      } else if (item.productName || item.product_name) {
+        productName = item.productName || item.product_name;
       }
       
-      // Check if this item is a review
-      if (item.reviewText || item.review || item.text || item.content) {
+      // Check if this item is a review (web_wanderer format uses reviewText and rating)
+      if (item.reviewText || item.review || item.text) {
         const rating = item.rating || item.stars || 0;
         reviews.push({
-          reviewerName: item.author || item.authorName || item.reviewer || item.reviewerName || 'Anonymous',
+          reviewerName: item.userNickname || item.author || item.authorName || item.reviewerName || 'Anonymous',
           rating: typeof rating === 'number' ? rating : parseFloat(rating) || 0,
           title: item.reviewTitle || item.title || '',
-          text: item.reviewText || item.review || item.text || item.content || '',
-          date: item.date || item.reviewDate || item.reviewSubmissionTime || new Date().toISOString()
+          text: item.reviewText || item.review || item.text || '',
+          date: item.reviewSubmissionTime || item.date || item.reviewDate || new Date().toISOString()
         });
         
         if (rating) {
