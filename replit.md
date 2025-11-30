@@ -48,6 +48,7 @@ The frontend uses Wouter for routing and TanStack Query for server state managem
 - **SerpApi (Walmart)**: Fetches Walmart product reviews and details.
   - **Base URL**: `serpapi.com`
   - **Endpoints**: `/search.json?engine=walmart_product`, `/search.json?engine=walmart_product_reviews`
+  - **Note**: Only US Walmart (walmart.com) is supported. Walmart Canada (walmart.ca) is not available through SerpApi.
 - **OpenRouter + Grok 4.1 Fast**: Provides AI capabilities for review analysis and reply generation.
 
 ### Replit Platform Integration

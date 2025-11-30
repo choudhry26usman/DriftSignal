@@ -58,9 +58,9 @@ export function isWalmartConfigured(): boolean {
 
 /**
  * Extract product ID from Walmart URL
- * Supports both US (walmart.com) and Canada (walmart.ca) URLs
- * US: https://www.walmart.com/ip/Product-Name/123456789
- * Canada: https://www.walmart.ca/en/ip/Product-Name/2Z9L5F76Q5HD
+ * Supports US Walmart (walmart.com) URLs only
+ * Example: https://www.walmart.com/ip/Product-Name/123456789
+ * Note: Walmart Canada (walmart.ca) is not supported by SerpApi
  */
 function extractProductId(url: string): string | null {
   // Match both numeric IDs (US) and alphanumeric IDs (Canada)
@@ -79,9 +79,14 @@ export async function fetchWalmartProduct(productUrl: string, fullSync: boolean 
     throw new Error("SERPAPI_KEY is not configured. Please add it to your environment variables.");
   }
 
-  // Support both US (walmart.com) and Canada (walmart.ca) URLs
-  if (!productUrl.includes('walmart.com') && !productUrl.includes('walmart.ca')) {
-    throw new Error("Invalid Walmart URL. Please provide a valid walmart.com or walmart.ca product URL.");
+  // Check for Canadian Walmart - not supported by SerpApi
+  if (productUrl.includes('walmart.ca')) {
+    throw new Error("Walmart Canada (walmart.ca) is not currently supported. The review API only works with US Walmart (walmart.com) products. Please provide a walmart.com product URL instead.");
+  }
+
+  // Only US Walmart is supported
+  if (!productUrl.includes('walmart.com')) {
+    throw new Error("Invalid Walmart URL. Please provide a valid walmart.com product URL.");
   }
 
   // Extract product ID from URL
