@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { MessageCircle, X, Send, Bot, User, Loader2, Sparkles } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useChatbot } from "@/hooks/use-chatbot";
 
 interface Message {
   id: string;
@@ -15,7 +16,7 @@ interface Message {
 }
 
 export function ChatbotAssistant() {
-  const [isOpen, setIsOpen] = useState(false);
+  const { isOpen, setIsOpen } = useChatbot();
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "welcome",

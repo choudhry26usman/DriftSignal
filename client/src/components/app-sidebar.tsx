@@ -1,4 +1,4 @@
-import { LayoutDashboard, Workflow, BarChart3, Upload, Filter, Settings, LogOut, User, HelpCircle } from "lucide-react";
+import { LayoutDashboard, Workflow, BarChart3, Upload, Filter, Settings, LogOut, User, HelpCircle, Bot } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useState } from "react";
 import {
@@ -27,6 +27,7 @@ import driftSignalLogo from "@assets/generated_images/neon_wave_lines_logo_dark_
 import { ImportReviewsModal } from "@/components/ImportReviewsModal";
 import { AdvancedFiltersModal } from "@/components/AdvancedFiltersModal";
 import { useAuth } from "@/hooks/useAuth";
+import { useChatbot } from "@/hooks/use-chatbot";
 
 const mainMenuItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard, testId: "link-dashboard" },
@@ -41,6 +42,7 @@ export function AppSidebar() {
   const [importModalOpen, setImportModalOpen] = useState(false);
   const [filtersModalOpen, setFiltersModalOpen] = useState(false);
   const { user } = useAuth();
+  const { setIsOpen: openChatbot } = useChatbot();
 
   const handleLogout = () => {
     window.location.href = "/api/logout";
@@ -124,6 +126,15 @@ export function AppSidebar() {
                   >
                     <Filter className="h-4 w-4" />
                     <span>Advanced Filters</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton 
+                    data-testid="button-ai-assistant"
+                    onClick={() => openChatbot(true)}
+                  >
+                    <Bot className="h-4 w-4" />
+                    <span>AI Assistant</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               </SidebarMenu>

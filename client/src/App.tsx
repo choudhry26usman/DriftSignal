@@ -9,6 +9,7 @@ import { ThemeProvider } from "@/components/ThemeProvider";
 import { AppSidebar } from "@/components/app-sidebar";
 import { TourProvider } from "@/components/TourProvider";
 import { ChatbotAssistant } from "@/components/ChatbotAssistant";
+import { ChatbotProvider } from "@/hooks/use-chatbot";
 import { useTour } from "@/hooks/use-tour";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -115,12 +116,14 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
-        <TourProvider>
-          <TooltipProvider>
-            <AppRouter />
-            <Toaster />
-          </TooltipProvider>
-        </TourProvider>
+        <ChatbotProvider>
+          <TourProvider>
+            <TooltipProvider>
+              <AppRouter />
+              <Toaster />
+            </TooltipProvider>
+          </TourProvider>
+        </ChatbotProvider>
       </ThemeProvider>
     </QueryClientProvider>
   );
