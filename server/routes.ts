@@ -647,12 +647,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Extract ASIN from URL if provided
       let extractedAsin = sanitized;
+      let isValidAsin = false;
+      
       if (sanitized.includes('amazon')) {
         // Try to extract ASIN from URL patterns like /dp/ASIN or /gp/product/ASIN
         const asinMatch = sanitized.match(/\/(?:dp|gp\/product)\/([A-Z0-9]{10})/i);
         if (asinMatch) {
           extractedAsin = asinMatch[1];
+          isValidAsin = true;
+        } else {
+          // URL contains 'amazon' but no valid ASIN found - this is likely a referral/mission link
+          console.log(`Invalid Amazon URL - no ASIN found: ${sanitized}`);
+          return res.status(400).json({ 
+            error: "Invalid Amazon URL. Please use a product page URL that contains /dp/XXXXXXXXXX (e.g., https://www.amazon.com/Product-Name/dp/B09GTRVJQM). Referral links, mission links, and search results are not supported." 
+          });
         }
+      } else if (/^[A-Z0-9]{10}$/i.test(sanitized)) {
+        // Direct ASIN provided
+        isValidAsin = true;
+      } else {
+        return res.status(400).json({ 
+          error: "Invalid input. Please provide either a valid Amazon product URL (containing /dp/XXXXXXXXXX) or a 10-character ASIN." 
+        });
       }
       
       console.log(`Importing Amazon reviews for: ${sanitized} (ASIN: ${extractedAsin})`);
