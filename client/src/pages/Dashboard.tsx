@@ -48,12 +48,28 @@ type Sentiment = "positive" | "neutral" | "negative";
 type Status = "open" | "in_progress" | "resolved";
 type Severity = "low" | "medium" | "high" | "critical";
 
-// Mock reviews removed - now using only real imported reviews from Amazon/other sources
-const mockReviews: any[] = [];
+interface ReviewItem {
+  id: string;
+  marketplace: string;
+  productId: string;
+  productName?: string;
+  title: string;
+  content: string;
+  customerName: string;
+  customerEmail?: string;
+  rating?: number;
+  sentiment: Sentiment;
+  category: string;
+  severity: Severity;
+  status: Status;
+  createdAt: string;
+  aiSuggestedReply?: string;
+  verified?: boolean;
+}
 
 export default function Dashboard() {
   const searchString = useSearch();
-  const [selectedReview, setSelectedReview] = useState<typeof mockReviews[0] | null>(null);
+  const [selectedReview, setSelectedReview] = useState<ReviewItem | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isImportProductModalOpen, setIsImportProductModalOpen] = useState(false);
@@ -140,7 +156,7 @@ export default function Dashboard() {
 
 
 
-  const { data: importedReviewsData } = useQuery<{ reviews: typeof mockReviews; total: number }>({
+  const { data: importedReviewsData } = useQuery<{ reviews: ReviewItem[]; total: number }>({
     queryKey: ["/api/reviews/imported"],
   });
 
@@ -270,8 +286,7 @@ export default function Dashboard() {
   };
 
   const allReviews = useMemo(() => {
-    const imported = importedReviewsData?.reviews || [];
-    return [...mockReviews, ...imported];
+    return importedReviewsData?.reviews || [];
   }, [importedReviewsData]);
 
   // Derive unique products from both tracked products AND reviews

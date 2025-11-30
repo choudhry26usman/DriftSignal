@@ -558,7 +558,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             sentiment: analysis.sentiment,
             category: analysis.category,
             severity: analysis.severity,
-            status: "pending",
+            status: "open",
             createdAt: new Date(createdAt),
             aiSuggestedReply: aiReply,
             verified: false
