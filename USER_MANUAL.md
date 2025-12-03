@@ -1,37 +1,65 @@
-# DriftSignal: User Guide & Testing Instructions
+# DriftSignal: User Manual & Testing Guide
 
-## 1. Quick Start (For Graders)
+## 1. Quick Access 
 * **Live App URL:** https://replit.com/join/mwzovmgwyg-reiddm1
 * **GitHub Repository:** https://github.com/choudhry26usman/DriftSignal
 
-## 2. Authentication (Demo Mode)
-The system is pre-configured with a demo administrator account.
-* **Username:** `admin`
-* **Password:** `demo123`
-*(Note: If the Replit container is cold, it may take 30-60 seconds to boot the Flask server).*
+---
 
-## 3. How to Test Core Features
+## 2. Authentication & Security
+The system utilizes **Replit Auth (OpenID Connect)** for secure, session-based access.
+* **How to Login:**
+    1.  Click the **"Login with Replit"** button.
+    2.  The system will automatically authenticate you using your existing browser session.
+    3.  *Note:* No username/password is required. User data is isolated by your unique Replit User ID.
 
-### A. Populating Data (The "Simulation" Strategy)
-Since live API keys for Amazon SP-API are restricted, we have enabled two manual ingestion methods for the MVP:
-1.  **Manual Entry:** Click the **"Add Review"** button in the top navbar. Fill out the form to simulate a new incoming review from a customer.
-2.  **CSV Import:** Navigate to **Settings > Import**. Upload the sample `amazon_export.csv` (provided in the repo) to batch-upload 50+ reviews at once.
+---
 
-### B. The Unified Dashboard
-1.  Navigate to the **Dashboard**.
-2.  **Filter:** Use the sidebar to filter by "Platform" (Amazon vs. Shopify) or "Sentiment" (Negative vs. Positive).
-3.  **Observation:** Notice how the **Severity Score** (Critical/High/Low) dynamically adjusts based on the text intensity, not just the star rating.
+## 3. Core Feature Walkthrough
 
-### C. Testing AI Response Generation
-1.  Find a review flagged as **"Critical"** (Red Badge).
-2.  Click the blue **"Draft Reply"** button.
-3.  **Wait 3-5 seconds:** The system is calling the OpenAI GPT-3.5 API.
-4.  **Review the Draft:** The AI will generate a context-aware response that apologizes for the specific issue (e.g., shipping delay) without making unauthorized refund promises.
+### A. The "Glass-Morphic" Dashboard
+Upon logging in, you will see the **Unified Command Center**.
+* **Visual Style:** Notice the translucent "frosted glass" cards and vibrant blue gradient background (inspired by Linear/Notion).
+* **The Feed:** This list aggregates live feedback from Amazon, Walmart, and Email.
+* **Filtering:** Use the top bar to filter by **Platform** (Amazon vs. Shopify) or **Sentiment** (Critical/High/Low).
 
-## 4. Troubleshooting
-* **"Internal Server Error" on Import:** Ensure your CSV file matches the template headers exactly (`review_text`, `rating`, `source`).
-* **AI Features Not Working:** If the response generation fails, it usually means the OpenAI API quota on the student account has been reached. Check the console logs for "Rate Limit" errors.
+### B. Kanban Workflow Management
+DriftSignal uses a drag-and-drop workflow to track issue resolution.
+1.  **Locate a Review:** Find a card in the **"Open"** column.
+2.  **Action:** Click and drag the card to the **"In Progress"** column.
+3.  **Verification:** Refresh the page. The card remains in "In Progress," confirming that the state was successfully saved to the **Neon PostgreSQL** database.
 
-## 5. Known Limitations (MVP Scope)
-* **Mobile View:** The dashboard is responsive but optimized for desktop viewing.
-* **Email Sending:** The "Send" button simulates an SMTP handshake but does not actually dispatch emails to real customers to prevent spam flagging.
+### C. AI Intelligence (Powered by Grok 4.1)
+We utilize **xAI's Grok 4.1 Fast** model for superior reasoning speed.
+1.  **AI Assistant:** Click the **Chat Icon** (bottom right corner).
+2.  **Ask a Question:** Type *"Show me all negative reviews about shipping delays."*
+3.  **Result:** The AI interprets your natural language, queries the database, and returns a filtered list of relevant reviews.
+
+### D. Data Integrations
+Navigate to **Settings > Integrations** to view the status of our API proxies.
+* **Amazon:** Connected via **Axesso Data Service** (RapidAPI).
+* **Walmart:** Connected via **SerpApi**.
+* **Email:** Connected via **Microsoft Graph** (Outlook).
+*(Note: Green indicators confirm the API keys are active).*
+
+---
+
+## 4. Troubleshooting Guide
+
+### Issue: "Database Error" or Infinite Loading
+* **Cause:** The **Neon Serverless Postgres** instance may enter "Sleep Mode" after 5 minutes of inactivity to save costs.
+* **Fix:** Refresh the browser page once. Wait 10-15 seconds for the "Cold Start" to complete. The data will appear automatically.
+
+### Issue: AI Chat Not Responding
+* **Cause:** The **OpenRouter API** rate limit may be exceeded.
+* **Fix:** Wait 30 seconds and try again. The system includes automatic error propagation that will display a toast notification if the API fails.
+
+### Issue: Drag-and-Drop Not Saving
+* **Cause:** Network latency between the client and the Drizzle ORM.
+* **Fix:** Check your internet connection. A red "Sync Failed" badge will appear in the top right corner if the database write fails.
+
+---
+
+## 5. System Requirements
+* **Browser:** Chrome v90+ or Edge (Required for Glass-morphism CSS blur effects).
+* **Device:** Desktop recommended for Kanban management; Mobile View is supported for read-only access.
