@@ -1,40 +1,42 @@
-# DriftSignal
+# DriftSignal: AI-Powered Review Management Platform
 
-![Build Status](https://img.shields.io/badge/build-passing-brightgreen) ![Version](https://img.shields.io/badge/version-1.0.0--MVP-blue) ![Stack](https://img.shields.io/badge/tech-React%20%7C%20Node%20%7C%20OpenAI-orange)
+![Build Status](https://img.shields.io/badge/build-passing-brightgreen) ![Stack](https://img.shields.io/badge/tech-Python%20%7C%20Flask%20%7C%20OpenAI-blue) ![License](https://img.shields.io/badge/license-MIT-green)
 
-DriftSignal is an AI-assisted customer intelligence platform designed to aggregate, analyze, and triage feedback from fragmented e-commerce channels. Built as a capstone project for the Haskayne MBA program, it demonstrates how Generative AI can solve the "Data Silo" problem for small businesses.
-
----
-
-## The Problem: Feedback Fragmentation
-Small merchants (SMBs) operate on multiple channels simultaneously—Amazon for volume, Shopify for brand, and Walmart for reach.
-* **The Pain Point:** Merchants spend ~15% of their week logging into disparate portals to check reviews.
-* **The Risk:** A negative review on Amazon (latency < 24 hrs) can degrade seller rating algorithms before the merchant even sees it.
-
-## The Solution: Unified Intelligence
-DriftSignal functions as a headless aggregator. It ingests unstructured text data from multiple sources, normalizes it into a standard JSON schema, and applies LLM (Large Language Model) reasoning to determine:
-1.  **Sentiment Velocity:** Is the review urgent? (0-100 Score)
-2.  **Root Cause:** Is this a Logistics failure or a Product failure?
-3.  **Actionability:** Auto-drafts a context-aware response using RAG (Retrieval-Augmented Generation) principles.
+**DriftSignal** is an AI-assisted customer intelligence platform designed to centralize, categorize, and respond to feedback for small ecommerce businesses. Built as a capstone project for the **Haskayne MBA program**, it addresses the "Death by a Thousand Tabs" problem facing multi-channel sellers.
 
 ---
 
-## Technical Architecture & Simulation Strategy
-Due to the strict security audits required for live production access to Amazon's SP-API, this project utilizes a Hybrid Data Strategy:
+## 🚩 The Business Problem
+Small merchants (generating $50k-$500k/yr) operate on multiple channels—Amazon, Shopify, eBay, and Walmart.
+* **The Chaos:** Sellers log into 5 different portals daily to check reviews.
+* **The Risk:** 53% of consumers expect a response to negative reviews within a week. Missing a review on Amazon can degrade seller ratings before it's even seen.
+* **The Gap:** Enterprise tools (Birdeye, Podium) cost $300-$500/month, which is unaffordable for small operators.
 
-| Layer | Technology | Implementation Detail |
+## ⚡ The Solution
+DriftSignal functions as a centralized "Single Pane of Glass" dashboard.
+1.  **Unified Feed:** Aggregates reviews from CSV imports (Amazon/eBay) and manual entry into one stream.
+2.  **AI Categorization:** Automatically tags issues as *Shipping*, *Product Quality*, or *Customer Service*.
+3.  **Severity Scoring:** Assigns a "Criticality" score based on sentiment intensity (not just star rating).
+4.  **Smart Drafts:** Generates professional, empathetic response drafts in seconds using OpenAI.
+
+---
+
+## 🛠️ Technical Architecture
+This project was built using **AI-Assisted Development** on Replit.
+
+| Layer | Technology | Usage |
 | :--- | :--- | :--- |
-| **Frontend** | React + Vite | Component-based UI with Tailwind CSS for rapid state management. |
-| **Backend** | Node.js (Express) | RESTful API gateway handling client requests and AI orchestration. |
-| **Amazon Data** | **DummyJSON** | **Simulation:** We utilize the DummyJSON standard to mock high-volume transaction data, allowing us to stress-test the AI sorting logic without triggering Amazon's anti-bot defenses. |
-| **Walmart Data** | **Apify** | **Scraping:** Live data is retrieved via a dedicated actor on the Apify platform to bypass simple HTML parsing limits. |
-| **Intelligence** | **GPT-4o** | Utilizes "Few-Shot Prompting" to enforce JSON output for consistent frontend rendering. |
+| **Backend** | **Python (Flask)** | RESTful API endpoints for CRUD operations and AI orchestration. |
+| **Frontend** | **Bootstrap 5** | Responsive HTML dashboard with Jinja2 templating. |
+| **Database** | **PostgreSQL** | Relational data storage using SQLAlchemy ORM for Users and Reviews. |
+| **Intelligence** | **OpenAI API** | GPT-3.5-turbo for sentiment classification and response generation. |
+| **Development** | **Replit Agent** | utilized for scaffolding, debugging, and schema design. |
 
 ---
 
-## Quick Start (Local & Replit)
+## 🚀 Quick Start (Local & Replit)
 
-**Prerequisites:** Node.js v18+, OpenAI API Key.
+**Prerequisites:** Python 3.10+, OpenAI API Key.
 
 1.  **Clone the Repository**
     ```bash
@@ -44,29 +46,33 @@ Due to the strict security audits required for live production access to Amazon'
 
 2.  **Install Dependencies**
     ```bash
-    npm install
+    pip install -r requirements.txt
     ```
 
 3.  **Configure Environment**
-    Rename `.env.example` to `.env` and inject your keys:
+    Create a `.env` file:
     ```env
     OPENAI_API_KEY=sk-proj-...
-    REPLIT_DB_URL=...
+    DATABASE_URL=postgresql://...
+    SECRET_KEY=...
     ```
 
-4.  **Launch**
+4.  **Run the App**
     ```bash
-    npm run dev
+    python main.py
     ```
 
 ---
 
+## 👥 The Team (Haskayne MBA)
+* **Sam:** Strategy & Product Management
+* **Reid:** Development Lead
+* **Usman:** GitHub & Product Management 
+* **Mark:** Business Analysis
+* **Mike:** QA & User Testing
 
-## 👤 Contributors
-* **Product & Documentation:** Usman Choudhry
-* **Lead Engineering:** Reid McGrath
-* **QA & Strategy:** Sam Horton
-* **Technical Writer:** Mike Prince-Wright
-* **Product Marketing:** Mark Fiselier
+---
 
 *Licensed under the [MIT License](LICENSE).*
+
+
