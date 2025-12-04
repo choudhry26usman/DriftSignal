@@ -1,6 +1,6 @@
 # DriftSignal: User Manual & Testing Guide
 
-## 1. Quick Access 
+## 1. Quick Access
 * **Live App URL:** https://replit.com/join/mwzovmgwyg-reiddm1
 * **GitHub Repository:** https://github.com/choudhry26usman/DriftSignal
 
@@ -8,10 +8,11 @@
 
 ## 2. Authentication & Security
 The system utilizes **Replit Auth (OpenID Connect)** for secure, session-based access.
-* **How to Login:**
-    1.  Click the **"Login with Replit"** button.
-    2.  The system will automatically authenticate you using your existing browser session.
-    3.  *Note:* No username/password is required. User data is isolated by your unique Replit User ID.
+
+**How to Login:**
+1.  Click the **"Login with Replit"** button.
+2.  The system will automatically authenticate you using your existing browser session.
+3.  **Note:** No username/password is required. User data is isolated by your unique Replit User ID.
 
 ---
 
@@ -19,47 +20,74 @@ The system utilizes **Replit Auth (OpenID Connect)** for secure, session-based a
 
 ### A. The "Glass-Morphic" Dashboard
 Upon logging in, you will see the **Unified Command Center**.
-* **Visual Style:** Notice the translucent "frosted glass" cards and vibrant blue gradient background (inspired by Linear/Notion).
-* **The Feed:** This list aggregates live feedback from Amazon, Walmart, and Email.
-* **Filtering:** Use the top bar to filter by **Platform** (Amazon vs. Shopify) or **Sentiment** (Critical/High/Low).
+* **Visual Style:** Notice the translucent "frosted glass" cards and vibrant blue-to-purple gradient background (inspired by Linear/Notion).
+* **The Feed:** This list aggregates live feedback from Amazon, Walmart (US & Canada), Shopify, and Email (Outlook).
+* **Filtering:** Use the **Advanced Filters** panel to sort by:
+    * **Marketplace:** Amazon, Walmart, Shopify, or Mailbox
+    * **Sentiment:** Positive, Neutral, or Negative
+    * **Severity:** Low, Medium, High, or Critical
+    * **Status:** Open, In Progress, or Resolved
+* **Export:** Download filtered reviews as CSV from the Dashboard or Analytics page.
 
 ### B. Kanban Workflow Management
-DriftSignal uses a drag-and-drop workflow to track issue resolution.
-1.  **Locate a Review:** Find a card in the **"Open"** column.
-2.  **Action:** Click and drag the card to the **"In Progress"** column.
-3.  **Verification:** Refresh the page. The card remains in "In Progress," confirming that the state was successfully saved to the **Neon PostgreSQL** database.
+DriftSignal uses a **drag-and-drop workflow** with **product swimlanes** to track issue resolution.
+1.  **Navigate:** Go to the Workflow page from the sidebar.
+2.  **Product Swimlanes:** Reviews are grouped by product in collapsible sections—expand or collapse to manage large volumes.
+3.  **Drag-and-Drop:** Click and drag a card from "Open" to "In Progress" or "Resolved."
+4.  **Verification:** The status updates immediately and persists in the PostgreSQL database.
 
 ### C. AI Intelligence (Powered by Grok 4.1)
-We utilize **xAI's Grok 4.1 Fast** model for superior reasoning speed.
-1.  **AI Assistant:** Click the **Chat Icon** (bottom right corner).
-2.  **Ask a Question:** Type *"Show me all negative reviews about shipping delays."*
-3.  **Result:** The AI interprets your natural language, queries the database, and returns a filtered list of relevant reviews.
+We utilize xAI's **Grok 4.1 Fast** model for sentiment analysis, categorization, and response generation.
 
-### D. Data Integrations
-Navigate to **Settings > Integrations** to view the status of our API proxies.
-* **Amazon:** Connected via **Axesso Data Service** (RapidAPI).
-* **Walmart:** Connected via **SerpApi**.
-* **Email:** Connected via **Microsoft Graph** (Outlook).
-*(Note: Green indicators confirm the API keys are active).*
+**AI Chatbot Assistant:**
+* Click the **Chat Icon** (bottom right corner with sparkle).
+* Ask questions like: *"How do I import reviews?"* or *"How does sentiment analysis work?"*
+* The AI provides instant guidance on platform navigation.
+
+**AI-Powered Review Analysis:**
+* Every imported review is automatically analyzed for **sentiment, severity, and category**.
+* AI generates **suggested professional replies** that you can copy or send via Outlook.
+
+### D. Data Import Options
+* **Marketplace Imports:** Click "Import" to add products by URL (Amazon ASIN or Walmart URL).
+* **File Imports:** Upload CSV or JSON files. The AI automatically processes each row for sentiment/severity.
+* **Email Imports:** Sync your **Outlook inbox** to import customer emails as reviews. The AI extracts product info and generates draft replies.
+
+### E. Data Integrations
+Navigate to **Settings > Integrations** to view the status of API connections.
+* **AI:** Grok via OpenRouter (Powers analysis).
+* **Amazon:** Connected via Axesso Data Service (RapidAPI).
+* **Walmart US:** Connected via SerpApi.
+* **Walmart Canada:** Connected via Apify.
+* **Email:** Connected via Microsoft Graph (Outlook).
+* *Note: Green checkmarks confirm the API keys are active.*
+
+### F. Help & Guided Tour
+* Navigate to **Help & FAQ** from the sidebar.
+* Click **"Start Guided Tour"** for an interactive walkthrough of the entire platform.
 
 ---
 
 ## 4. Troubleshooting Guide
 
 ### Issue: "Database Error" or Infinite Loading
-* **Cause:** The **Neon Serverless Postgres** instance may enter "Sleep Mode" after 5 minutes of inactivity to save costs.
-* **Fix:** Refresh the browser page once. Wait 10-15 seconds for the "Cold Start" to complete. The data will appear automatically.
+* **Cause:** The Neon Serverless Postgres instance may enter "Sleep Mode" after inactivity.
+* **Fix:** Refresh the browser page and wait 10-15 seconds for the cold start to complete.
 
 ### Issue: AI Chat Not Responding
-* **Cause:** The **OpenRouter API** rate limit may be exceeded.
-* **Fix:** Wait 30 seconds and try again. The system includes automatic error propagation that will display a toast notification if the API fails.
+* **Cause:** The OpenRouter API rate limit may be exceeded.
+* **Fix:** Wait 30 seconds and try again. A toast notification will appear if the API fails.
 
 ### Issue: Drag-and-Drop Not Saving
-* **Cause:** Network latency between the client and the Drizzle ORM.
-* **Fix:** Check your internet connection. A red "Sync Failed" badge will appear in the top right corner if the database write fails.
+* **Cause:** Network connectivity issue.
+* **Fix:** Check your internet connection. A toast notification will display if the database write fails.
+
+### Issue: Email Sync Taking Too Long
+* **Cause:** Large inbox with many emails to process.
+* **Fix:** Use **"Quick Sync"** (last 24 hours) instead of "Full Sync" for faster results. Emails are processed in parallel batches of 5.
 
 ---
 
 ## 5. System Requirements
-* **Browser:** Chrome v90+ or Edge (Required for Glass-morphism CSS blur effects).
-* **Device:** Desktop recommended for Kanban management; Mobile View is supported for read-only access.
+* **Browser:** Chrome v90+ or Edge (required for glass-morphism CSS blur effects).
+* **Device:** Desktop recommended for Kanban management; Mobile view is supported for read-only access.
