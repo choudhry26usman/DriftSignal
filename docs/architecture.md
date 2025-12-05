@@ -49,7 +49,7 @@ DriftSignal utilizes a modern **Client-Server Architecture** optimized for cloud
     * `sessions`: Persistent storage via `connect-pg-simple`.
 
 ### Intelligence Engine (AI)
-* **Model:** **Grok 4.1 Fast** (via OpenRouter).
+* **Model:** **Grok 4.1 Fast** (via OpenRouter)
 * **Reasoning:** Selected over GPT-3.5 for superior speed in real-time chat.
 * **Capabilities:**
     * **Review Analysis:** Performs categorical sentiment classification (Positive/Neutral/Negative) and assigns a confidence score (0-100).
